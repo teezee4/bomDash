@@ -15,7 +15,7 @@ def dashboard():
     
     # Use the property method for lrv_coverage calculation
     low_stock_parts = MainBOMStorage.query.filter(
-        MainBOMStorage.coverage_lrvs < 10
+        MainBOMStorage.lrv_coverage < 10
     ).count()
     
     out_of_stock_parts = MainBOMStorage.query.filter(
@@ -27,7 +27,7 @@ def dashboard():
     
     # Low stock items for alerts
     low_stock_items = MainBOMStorage.query.filter(
-        MainBOMStorage.coverage_lrvs < 10
+        MainBOMStorage.lrv_coverage  < 10
     ).limit(15).all()
     
     # Calculate total stock items
@@ -72,7 +72,7 @@ def parts_list():
     
     low_stock_only = request.args.get('low_stock_only', '')
     if low_stock_only == 'low':
-        query = query.filter(MainBOMStorage.coverage_lrvs < 10)
+        query = query.filter(MainBOMStorage.lrv_coverage  < 10)
     elif low_stock_only == 'out':
         query = query.filter(MainBOMStorage.quantity_currently_in_stock_at_store <= 0)
     
