@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Log - BOM Inventory{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-truck"></i> Delivery Log
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Delivery Form -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-plus"></i> Log New Delivery</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.part_number.label(class="form-label") }}
+                        {{ form.part_number(class="form-control", id="partNumberInput") }}
+                        {% for error in form.part_number.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.part_name.label(class="form-label") }}
+                        {{ form.part_name(class="form-control") }}
+                        {% for error in form.part_name.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.supplier.label(class="form-label") }}
+                        {{ form.supplier(class="form-control") }}
+                        {% for error in form.supplier.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.quantity_received.label(class="form-label") }}
+                                {{ form.quantity_received(class="form-control") }}
+                                {% for error in form.quantity_received.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.date_received.label(class="form-label") }}
+                                {{ form.date_received(class="form-control") }}
+                                {% for error in form.date_received.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.date_expected.label(class="form-label") }}
+                        {{ form.date_expected(class="form-control") }}
+                        <small class="form-text text-muted">For expected future deliveries (optional)</small>
+                        {% for error in form.date_expected.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="3") }}
+                        {% for error in form.notes.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Log Delivery
+                    </button>
+                    <a href="{{ url_for('main.parts_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list"></i> Browse Parts
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Deliveries -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history"></i> Recent Deliveries</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_deliveries %}
+                <div class="list-group">
+                    {% for delivery in recent_deliveries %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ delivery.part_number }}</h6>
+                            <small class="text-muted">{{ delivery.date_received.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        <p class="mb-1">
+                            <strong>{{ delivery.part_name }}</strong><br>
+                            <span class="badge bg-success">+{{ delivery.quantity_received }}</span> from {{ delivery.supplier }}
+                        </p>
+                        {% if delivery.notes %}
+                        <small class="text-muted">{{ delivery.notes }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    No deliveries recorded yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Part number autocomplete functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const partNumberInput = document.getElementById('partNumberInput');
+    const partNameInput = document.querySelector('input[name="part_name"]');
+    const supplierInput = document.querySelector('input[name="supplier"]');
+    
+    if (partNumberInput) {
+        // Create autocomplete dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'autocomplete-dropdown position-absolute bg-white border rounded shadow-sm d-none';
+        dropdown.style.zIndex = '1000';
+        dropdown.style.width = '100%';
+        dropdown.style.maxHeight = '200px';
+        dropdown.style.overflowY = 'auto';
+        partNumberInput.parentNode.style.position = 'relative';
+        partNumberInput.parentNode.appendChild(dropdown);
+        
+        let timeoutId;
+        
+        partNumberInput.addEventListener('input', function() {
+            clearTimeout(timeoutId);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                dropdown.classList.add('d-none');
+                return;
+            }
+            
+            timeoutId = setTimeout(() => {
+                fetch(`/api/part_autocomplete?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        dropdown.innerHTML = '';
+                        
+                        if (data.length === 0) {
+                            dropdown.classList.add('d-none');
+                            return;
+                        }
+                        
+                        data.forEach(part => {
+                            const item = document.createElement('div');
+                            item.className = 'p-2 border-bottom cursor-pointer autocomplete-item';
+                            item.style.cursor = 'pointer';
+                            item.innerHTML = `
+                                <strong>${part.part_number}</strong><br>
+                                <small class="text-muted">${part.part_name}</small>
+                            `;
+                            
+                            item.addEventListener('click', function() {
+                                partNumberInput.value = part.part_number;
+                                partNameInput.value = part.part_name;
+                                dropdown.classList.add('d-none');
+                            });
+                            
+                            dropdown.appendChild(item);
+                        });
+                        
+                        dropdown.classList.remove('d-none');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching autocomplete:', error);
+                        dropdown.classList.add('d-none');
+                    });
+            }, 300);
+        });
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!partNumberInput.parentNode.contains(e.target)) {
+                dropdown.classList.add('d-none');
+            }
+        });
+    }
+    
+    // Pre-populate part number from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const partNumber = urlParams.get('part_number');
+    if (partNumber && partNumberInput) {
+        partNumberInput.value = partNumber;
+        // Trigger autocomplete to fill other fields
+        partNumberInput.dispatchEvent(new Event('input'));
+    }
+});
+
+// Hover effects for autocomplete
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .autocomplete-item:hover {
+            background-color: #f8f9fa;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

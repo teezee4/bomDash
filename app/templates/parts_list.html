@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Parts List - BOM Inventory{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-list"></i> Parts List
+        </h1>
+    </div>
+</div>
+
+<!-- Search and Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="search_term" class="form-label">Search Parts</label>
+                <input type="text" class="form-control" id="search_term" name="search_term"
+                       value="{{ search_term }}" placeholder="Part number, name, or description">
+            </div>
+            
+            <div class="col-md-2">
+                {{ form.supplier_filter.label(class="form-label") }}
+                {{ form.supplier_filter(class="form-select") }}
+            </div>
+            
+            <div class="col-md-2">
+                {{ form.component_filter.label(class="form-label") }}
+                {{ form.component_filter(class="form-select") }}
+            </div>
+            
+            <div class="col-md-2">
+                {{ form.low_stock_only.label(class="form-label") }}
+                {{ form.low_stock_only(class="form-select") }}
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid gap-2 d-md-flex">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="{{ url_for('main.parts_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Summary -->
+{% if parts.items %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> 
+    Showing {{ parts.items|length }} of {{ parts.total }} parts
+    {% if search_term or supplier_filter or component_filter or low_stock_only %}
+        (filtered)
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Parts Table -->
+<div class="card">
+    <div class="card-body">
+        {% if parts.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Part Name</th>
+                        <th>Supplier</th>
+                        <th>Description</th>
+                        <th>Type</th>
+                        <th>Qty/LRV</th>
+                        <th>Current Stock</th>
+                        <th>LRV Coverage</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for part in parts.items %}
+                    <tr class="{% if part.qty_current_stock <= 0 %}table-danger{% elif part.lrv_coverage < 10 %}table-warning{% endif %}">
+                        <td>
+                            <strong>{{ part.part_number }}</strong>
+                        </td>
+                        <td>
+                            {{ part.part_name or '-' }}
+                            {% if part.description %}
+                            <br><small class="text-muted">{{ part.description[:50] }}{% if part.description|length > 50 %}...{% endif %}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ part.supplier or '-' }}</td>
+                        <td>{{ part.description or '-' }}</td>
+                        <td>{{ part.type or '-' }}</td>
+                        <td>{{ part.qty_per_lrv or 0 }}</td>
+                        <td>
+                            <span class="{% if part.qty_current_stock <= 0 %}text-danger{% elif part.lrv_coverage < 5 %}text-warning{% endif %}">
+                                {{ part.qty_current_stock or 0 }}
+                            </span>
+                        </td>
+                        <td>{{ "%.1f"|format(part.lrv_coverage) }} trains</td>
+                        <td>
+                            {% if part.qty_current_stock <= 0 %}
+                                <span class="badge bg-danger">Out of Stock</span>
+                            {% elif part.lrv_coverage < 5 %}
+                                <span class="badge bg-danger">Critical Low</span>
+                            {% elif part.lrv_coverage < 10 %}
+                                <span class="badge bg-warning">Low Stock</span>
+                            {% else %}
+                                <span class="badge bg-success">OK</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-info" data-bs-toggle="modal"
+                                        data-bs-target="#partModal{{ part.id }}" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
+                                   class="btn btn-outline-success" title="Add Delivery">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Part Details Modal -->
+                    <div class="modal fade" id="partModal{{ part.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ part.part_number }} - {{ part.part_name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Basic Information</h6>
+                                            <table class="table table-sm">
+                                                <tr><td><strong>Part Number:</strong></td><td>{{ part.part_number }}</td></tr>
+                                                <tr><td><strong>Part Name:</strong></td><td>{{ part.part_name or '-' }}</td></tr>
+                                                <tr><td><strong>Supplier:</strong></td><td>{{ part.supplier or '-' }}</td></tr>
+                                                <tr><td><strong>Type:</strong></td><td>{{ part.type or '-' }}</td></tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Stock Information</h6>
+                                            <table class="table table-sm">
+                                                <tr><td><strong>Qty per LRV:</strong></td><td>{{ part.qty_per_lrv or 0 }}</td></tr>
+                                                <tr><td><strong>Total for 233 LRV:</strong></td><td>{{ part.total_needed_for_233_lrv or 0 }}</td></tr>
+                                                <tr><td><strong>Current Stock:</strong></td><td>{{ part.qty_current_stock or 0 }}</td></tr>
+                                                <tr><td><strong>LRV Coverage:</strong></td><td>{{ "%.1f"|format(part.lrv_coverage) }} trains</td></tr>
+                                                <tr><td><strong>Total Received:</strong></td><td>{{ part.qty_on_site or 0 }}</td></tr>
+                                                <tr><td><strong>Shipped Out:</strong></td><td>{{ part.qty_shipped_out or 0 }}</td></tr>
+                                                <tr><td><strong>Back Ordered:</strong></td><td>{{ part.back_order_qty or 0 }}</td></tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    {% if part.description %}
+                                    <div class="mt-3">
+                                        <h6>Description</h6>
+                                        <p>{{ part.description }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if part.notes %}
+                                    <div class="mt-3">
+                                        <h6>Notes</h6>
+                                        <p>{{ part.notes }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if part.back_order_delivery_info %}
+                                    <div class="mt-3">
+                                        <h6>Back Order Info</h6>
+                                        <p>{{ part.back_order_delivery_info }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
+                                       class="btn btn-success">Add Delivery</a>
+                                    <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
+                                       class="btn btn-warning">Adjust Stock</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if parts.pages > 1 %}
+        <nav aria-label="Parts pagination">
+            <ul class="pagination justify-content-center">
+                {% if parts.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.parts_list', page=parts.prev_num,
+                       search_term=search_term, supplier_filter=supplier_filter, 
+                       component_filter=component_filter, low_stock_only=low_stock_only) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in parts.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != parts.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.parts_list', page=page_num,
+                               search_term=search_term, supplier_filter=supplier_filter,
+                               component_filter=component_filter, low_stock_only=low_stock_only) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if parts.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.parts_list', page=parts.next_num,
+                       search_term=search_term, supplier_filter=supplier_filter,
+                       component_filter=component_filter, low_stock_only=low_stock_only) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-search"></i>
+            <h5>No parts found</h5>
+            <p>Try adjusting your search criteria or <a href="{{ url_for('main.parts_list') }}">clear filters</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-populate part number in forms when coming from parts list
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const partNumber = urlParams.get('part_number');
+    if (partNumber) {
+        const partNumberInput = document.querySelector('input[name="part_number"]');
+        if (partNumberInput) {
+            partNumberInput.value = partNumber;
+        }
+    }
+});
+</script>
+{% endblock %}

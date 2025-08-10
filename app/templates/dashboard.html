@@ -1,0 +1,272 @@
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BOM Inventory{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Inventory Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Parts</h5>
+                        <h2>{{ total_parts }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-boxes fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Low Stock</h5>
+                        <h2>{{ low_stock_parts }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Out of Stock</h5>
+                        <h2>{{ out_of_stock_parts }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Stock Items</h5>
+                        <h2>{{ "{:,}".format(total_stock_items) }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-warehouse fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Train Calculator Section -->
+{% if show_calculator %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-calculator"></i> Train Parts Calculator</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="row g-3">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="col-md-4">
+                        {{ form.num_trains.label(class="form-label") }}
+                        {{ form.num_trains(class="form-control") }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.part_number.label(class="form-label") }}
+                        {{ form.part_number(class="form-control", placeholder="Leave blank for all parts") }}
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary d-block w-100">Calculate</button>
+                    </div>
+                </form>
+                
+                {% if results %}
+                <div class="mt-4">
+                    <h6>Parts Needed for {{ form.num_trains.data }} Trains:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Part Number</th>
+                                    <th>Part Name</th>
+                                    <th>Qty per LRV</th>
+                                    <th>Total Needed</th>
+                                    <th>Current Stock</th>
+                                    <th>Shortage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results[:20] %}
+                                <tr class="{% if result.shortage > 0 %}table-warning{% endif %}">
+                                    <td><strong>{{ result.part_number }}</strong></td>
+                                    <td>{{ result.part_name }}</td>
+                                    <td>{{ result.qty_per_lrv }}</td>
+                                    <td>{{ result.needed }}</td>
+                                    <td>{{ result.current_stock }}</td>
+                                    <td>
+                                        {% if result.shortage > 0 %}
+                                            <span class="badge bg-warning">{{ result.shortage }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">OK</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Low Stock Alerts -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-exclamation-triangle text-warning"></i> Low Stock Alerts</h5>
+            </div>
+            <div class="card-body">
+                {% if low_stock_items %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Part Number</th>
+                                <th>Part Name</th>
+                                <th>Current Stock</th>
+                                <th>LRV Coverage</th>
+                                <th>Supplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock_items %}
+                            <tr class="{% if item.qty_current_stock <= 0 %}table-danger{% else %}table-warning{% endif %}">
+                                <td><strong>{{ item.part_number }}</strong></td>
+                                <td>{{ item.part_name }}</td>
+                                <td>{{ item.qty_current_stock }}</td>
+                                <td>{{ "%.1f"|format(item.lrv_coverage) }} trains</td>
+                                <td>{{ item.supplier }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <a href="{{ url_for('main.parts_list', low_stock_only='low') }}" class="btn btn-warning btn-sm">
+                    View All Low Stock Items
+                </a>
+                {% else %}
+                <p class="text-success">No low stock alerts! All parts have sufficient inventory.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Deliveries -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-truck text-info"></i> Recent Deliveries</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_deliveries %}
+                {% for delivery in recent_deliveries %}
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>{{ delivery.part_number }}</strong><br>
+                    <small class="text-muted">
+                        {{ delivery.quantity_received }} units from {{ delivery.supplier }}<br>
+                        {{ delivery.date_received.strftime('%Y-%m-%d') }}
+                    </small>
+                </div>
+                {% endfor %}
+                <a href="{{ url_for('main.delivery_log') }}" class="btn btn-info btn-sm">
+                    View All Deliveries
+                </a>
+                {% else %}
+                <p class="text-muted">No recent deliveries recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('main.delivery_log') }}" class="btn btn-success d-block mb-2">
+                            <i class="fas fa-plus"></i> Log Delivery
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('main.stock_adjustment') }}" class="btn btn-warning d-block mb-2">
+                            <i class="fas fa-edit"></i> Adjust Stock
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('main.parts_list') }}" class="btn btn-primary d-block mb-2">
+                            <i class="fas fa-search"></i> Search Parts
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('main.train_calculator') }}" class="btn btn-info d-block mb-2">
+                            <i class="fas fa-calculator"></i> Train Calculator
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Train Calculator route
+document.addEventListener('DOMContentLoaded', function() {
+    const calculatorBtn = document.querySelector('a[href="{{ url_for("main.train_calculator") }}"]');
+    if (calculatorBtn) {
+        calculatorBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Show calculator form on the same page
+            window.location.href = '{{ url_for("main.dashboard") }}' + '?show_calculator=1';
+        });
+    }
+});
+</script>
+{% endblock %}
