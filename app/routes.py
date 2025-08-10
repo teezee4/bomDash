@@ -13,13 +13,14 @@ def dashboard():
     # Key metrics
     total_parts = MainBOMStorage.query.count()
     
-    # Use the property method for lrv_coverage calculation
+    # Fixed: Use correct field name lrv_coverage
     low_stock_parts = MainBOMStorage.query.filter(
         MainBOMStorage.lrv_coverage < 10
     ).count()
     
+    # Fixed: Use correct field name qty_current_stock
     out_of_stock_parts = MainBOMStorage.query.filter(
-        MainBOMStorage.quantity_currently_in_stock_at_store <= 0
+        MainBOMStorage.qty_current_stock <= 0
     ).count()
     
     # Recent deliveries (last 10)
@@ -27,12 +28,12 @@ def dashboard():
     
     # Low stock items for alerts
     low_stock_items = MainBOMStorage.query.filter(
-        MainBOMStorage.lrv_coverage  < 10
+        MainBOMStorage.lrv_coverage < 10
     ).limit(15).all()
     
-    # Calculate total stock items
+    # Calculate total stock items - Fixed: Use correct field name
     total_stock_items = db.session.query(
-        db.func.sum(MainBOMStorage.quantity_currently_in_stock_at_store)
+        db.func.sum(MainBOMStorage.qty_current_stock)
     ).scalar() or 0
     
     return render_template('dashboard.html', 
@@ -68,13 +69,15 @@ def parts_list():
     
     component_filter = request.args.get('component_filter', '')
     if component_filter:
-        query = query.filter(MainBOMStorage.description == component_filter)
+        # Fixed: Use 'component' field instead of 'description'
+        query = query.filter(MainBOMStorage.component == component_filter)
     
     low_stock_only = request.args.get('low_stock_only', '')
     if low_stock_only == 'low':
-        query = query.filter(MainBOMStorage.lrv_coverage  < 10)
+        query = query.filter(MainBOMStorage.lrv_coverage < 10)
     elif low_stock_only == 'out':
-        query = query.filter(MainBOMStorage.quantity_currently_in_stock_at_store <= 0)
+        # Fixed: Use correct field name
+        query = query.filter(MainBOMStorage.qty_current_stock <= 0)
     
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -84,8 +87,9 @@ def parts_list():
     suppliers = db.session.query(MainBOMStorage.supplier.distinct()).filter(
         MainBOMStorage.supplier.isnot(None)
     ).all()
-    components = db.session.query(MainBOMStorage.description.distinct()).filter(
-        MainBOMStorage.description.isnot(None)
+    # Fixed: Use 'component' field for components dropdown
+    components = db.session.query(MainBOMStorage.component.distinct()).filter(
+        MainBOMStorage.component.isnot(None)
     ).all()
     
     form.supplier_filter.choices = [('', 'All Suppliers')] + [(s[0], s[0]) for s in suppliers]
@@ -120,9 +124,9 @@ def delivery_log():
         bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
         if bom_item:
             delivery.bom_item = bom_item
-            # Update the actual database field
-            current_stock = bom_item.quantity_currently_in_stock_at_store or 0.0
-            bom_item.quantity_currently_in_stock_at_store = current_stock + form.quantity_received.data
+            # Fixed: Update the correct database field
+            current_stock = bom_item.qty_current_stock or 0.0
+            bom_item.qty_current_stock = current_stock + form.quantity_received.data
             bom_item.calculate_lrv_coverage()
         
         db.session.add(delivery)
@@ -160,11 +164,11 @@ def stock_adjustment():
         )
         
         # Apply the adjustment to the correct field
-        current_stock = bom_item.quantity_currently_in_stock_at_store or 0.0
+        current_stock = bom_item.qty_current_stock or 0.0
         if form.adjustment_type.data == 'increase':
-            bom_item.quantity_currently_in_stock_at_store = current_stock + form.quantity_adjusted.data
+            bom_item.qty_current_stock = current_stock + form.quantity_adjusted.data
         else:
-            bom_item.quantity_currently_in_stock_at_store = max(0.0, current_stock - form.quantity_adjusted.data)
+            bom_item.qty_current_stock = max(0.0, current_stock - form.quantity_adjusted.data)
         
         # Recalculate LRV coverage
         bom_item.calculate_lrv_coverage()
@@ -192,6 +196,7 @@ def train_calculator():
             bom_item = MainBOMStorage.query.filter_by(part_number=part_number).first()
             if bom_item:
                 needed = bom_item.calculate_needed_for_trains(num_trains)
+                # Fixed: Use correct field name
                 shortage = max(0, needed - bom_item.qty_current_stock)
                 results = [{
                     'part_number': bom_item.part_number,
@@ -208,6 +213,7 @@ def train_calculator():
             all_parts = MainBOMStorage.query.all()
             for bom_item in all_parts:
                 needed = bom_item.calculate_needed_for_trains(num_trains)
+                # Fixed: Use correct field name
                 shortage = max(0, needed - bom_item.qty_current_stock)
                 results.append({
                     'part_number': bom_item.part_number,
@@ -236,3 +242,173 @@ def part_autocomplete():
     
     results = [{'part_number': p.part_number, 'part_name': p.part_name or ''} for p in parts]
     return jsonify(results)
+
+# Additional routes for enhanced functionality
+
+@main.route('/edit_part/<int:part_id>', methods=['GET', 'POST'])
+def edit_part(part_id):
+    """Edit a specific BOM item"""
+    bom_item = MainBOMStorage.query.get_or_404(part_id)
+    form = BOMItemForm(obj=bom_item)
+    
+    if form.validate_on_submit():
+        # Update all the fields
+        bom_item.part_number = form.part_number.data
+        bom_item.part_name = form.part_name.data
+        bom_item.description = form.description.data
+        bom_item.supplier = form.supplier.data
+        bom_item.component = form.component.data
+        bom_item.qty_per_lrv = form.qty_per_lrv.data
+        bom_item.qty_on_site = form.qty_on_site.data
+        bom_item.qty_current_stock = form.qty_current_stock.data
+        bom_item.consumable_or_essential = form.consumable_or_essential.data
+        bom_item.notes = form.notes.data
+        
+        # Recalculate dependent fields
+        bom_item.total_needed_233_lrv = bom_item.qty_per_lrv * 233
+        bom_item.calculate_lrv_coverage()
+        bom_item.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash(f'Part {bom_item.part_number} updated successfully!', 'success')
+        return redirect(url_for('main.parts_list'))
+    
+    return render_template('edit_part.html', form=form, part=bom_item)
+
+@main.route('/add_part', methods=['GET', 'POST'])
+def add_part():
+    """Add a new BOM item"""
+    form = BOMItemForm()
+    
+    if form.validate_on_submit():
+        # Check if part number already exists
+        existing_part = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
+        if existing_part:
+            flash(f'Part number {form.part_number.data} already exists!', 'error')
+            return render_template('add_part.html', form=form)
+        
+        # Create new part
+        new_part = MainBOMStorage(
+            part_number=form.part_number.data,
+            part_name=form.part_name.data,
+            description=form.description.data,
+            supplier=form.supplier.data,
+            component=form.component.data,
+            qty_per_lrv=form.qty_per_lrv.data,
+            qty_on_site=form.qty_on_site.data,
+            qty_current_stock=form.qty_current_stock.data,
+            consumable_or_essential=form.consumable_or_essential.data,
+            notes=form.notes.data,
+            total_needed_233_lrv=form.qty_per_lrv.data * 233
+        )
+        
+        # Calculate LRV coverage
+        new_part.calculate_lrv_coverage()
+        
+        db.session.add(new_part)
+        db.session.commit()
+        
+        flash(f'Part {new_part.part_number} added successfully!', 'success')
+        return redirect(url_for('main.parts_list'))
+    
+    return render_template('add_part.html', form=form)
+
+@main.route('/export_shipment', methods=['GET', 'POST'])
+def export_shipment():
+    """Export/ship parts to divisions and deduct from stock"""
+    if request.method == 'POST':
+        division_name = request.form.get('division_name')
+        shipment_data = request.form.get('shipment_data')  # JSON data of parts and quantities
+        
+        try:
+            shipments = json.loads(shipment_data)
+            total_shipped = 0
+            
+            # Process each shipment item
+            for item in shipments:
+                part_number = item.get('part_number')
+                quantity = float(item.get('quantity', 0))
+                
+                if quantity <= 0:
+                    continue
+                
+                # Find the BOM item
+                bom_item = MainBOMStorage.query.filter_by(part_number=part_number).first()
+                if bom_item and bom_item.qty_current_stock >= quantity:
+                    # Deduct from current stock
+                    bom_item.qty_current_stock -= quantity
+                    bom_item.qty_shipped_out += quantity
+                    bom_item.calculate_lrv_coverage()
+                    total_shipped += 1
+                else:
+                    flash(f'Insufficient stock for part {part_number}', 'warning')
+            
+            # Update division inventory if it exists
+            division = InventoryDivision.query.filter_by(division_name=division_name).first()
+            if not division:
+                division = InventoryDivision(division_name=division_name)
+                db.session.add(division)
+            
+            # You might want to add more specific tracking here
+            division.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            flash(f'Shipment to {division_name} completed. {total_shipped} items shipped.', 'success')
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            flash('Invalid shipment data format', 'error')
+        except Exception as e:
+            flash(f'Error processing shipment: {str(e)}', 'error')
+            db.session.rollback()
+    
+    # Get all parts for shipment form
+    all_parts = MainBOMStorage.query.filter(MainBOMStorage.qty_current_stock > 0).all()
+    divisions = InventoryDivision.query.all()
+    
+    return render_template('export_shipment.html', parts=all_parts, divisions=divisions)
+
+@main.route('/inventory_report')
+def inventory_report():
+    """Generate comprehensive inventory report"""
+    # Low stock items (less than 10 trains worth)
+    low_stock_items = MainBOMStorage.query.filter(MainBOMStorage.lrv_coverage < 10).all()
+    
+    # Out of stock items
+    out_of_stock_items = MainBOMStorage.query.filter(MainBOMStorage.qty_current_stock <= 0).all()
+    
+    # High value items (you might want to add a cost field for this)
+    all_items = MainBOMStorage.query.all()
+    
+    # Recent deliveries (last 30 days)
+    from datetime import date, timedelta
+    thirty_days_ago = date.today() - timedelta(days=30)
+    recent_deliveries = DeliveryLog.query.filter(
+        DeliveryLog.date_received >= thirty_days_ago
+    ).order_by(DeliveryLog.date_received.desc()).all()
+    
+    # Stock adjustments (last 30 days)
+    recent_adjustments = StockAdjustment.query.filter(
+        StockAdjustment.created_at >= thirty_days_ago
+    ).order_by(StockAdjustment.created_at.desc()).all()
+    
+    return render_template('inventory_report.html',
+                         low_stock_items=low_stock_items,
+                         out_of_stock_items=out_of_stock_items,
+                         all_items=all_items,
+                         recent_deliveries=recent_deliveries,
+                         recent_adjustments=recent_adjustments)
+
+@main.route('/api/dashboard_data')
+def dashboard_data():
+    """API endpoint for dashboard data (for AJAX updates)"""
+    total_parts = MainBOMStorage.query.count()
+    low_stock_parts = MainBOMStorage.query.filter(MainBOMStorage.lrv_coverage < 10).count()
+    out_of_stock_parts = MainBOMStorage.query.filter(MainBOMStorage.qty_current_stock <= 0).count()
+    total_stock_items = db.session.query(db.func.sum(MainBOMStorage.qty_current_stock)).scalar() or 0
+    
+    return jsonify({
+        'total_parts': total_parts,
+        'low_stock_parts': low_stock_parts,
+        'out_of_stock_parts': out_of_stock_parts,
+        'total_stock_items': int(total_stock_items)
+    })
