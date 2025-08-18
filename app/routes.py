@@ -4,8 +4,11 @@ from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdju
 from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm
 from sqlalchemy import or_
 import json
+from datetime import datetime, date, timedelta
+
 
 main = Blueprint('main', __name__)
+
 
 @main.route('/')
 def dashboard():
@@ -44,64 +47,76 @@ def dashboard():
                          recent_deliveries=recent_deliveries,
                          low_stock_items=low_stock_items)
 
+
 @main.route('/parts_list')
 def parts_list():
-    """Parts listing with search and filter functionality"""
-    form = SearchForm()
-    
-    # Base query
-    query = MainBOMStorage.query
-    
-    # Handle search
-    search_term = request.args.get('search_term', '').strip()
-    if search_term:
-        query = query.filter(or_(
-            MainBOMStorage.part_number.contains(search_term),
-            MainBOMStorage.part_name.contains(search_term),
-            MainBOMStorage.description.contains(search_term),
-            MainBOMStorage.supplier.contains(search_term)
-        ))
-    
-    # Handle filters
-    supplier_filter = request.args.get('supplier_filter', '')
-    if supplier_filter:
-        query = query.filter(MainBOMStorage.supplier == supplier_filter)
-    
-    component_filter = request.args.get('component_filter', '')
-    if component_filter:
-        # Fixed: Use 'component' field instead of 'description'
-        query = query.filter(MainBOMStorage.component == component_filter)
-    
-    low_stock_only = request.args.get('low_stock_only', '')
-    if low_stock_only == 'low':
-        query = query.filter(MainBOMStorage.lrv_coverage < 10)
-    elif low_stock_only == 'out':
-        # Fixed: Use correct field name
-        query = query.filter(MainBOMStorage.qty_current_stock <= 0)
-    
-    # Pagination
-    page = request.args.get('page', 1, type=int)
-    parts = query.paginate(page=page, per_page=50, error_out=False)
-    
-    # Get unique suppliers and components for filter dropdowns
-    suppliers = db.session.query(MainBOMStorage.supplier.distinct()).filter(
-        MainBOMStorage.supplier.isnot(None)
-    ).all()
-    # Fixed: Use 'component' field for components dropdown
-    components = db.session.query(MainBOMStorage.component.distinct()).filter(
-        MainBOMStorage.component.isnot(None)
-    ).all()
-    
-    form.supplier_filter.choices = [('', 'All Suppliers')] + [(s[0], s[0]) for s in suppliers]
-    form.component_filter.choices = [('', 'All Components')] + [(c[0], c[0]) for c in components]
-    
-    return render_template('parts_list.html', 
-                         parts=parts,
-                         form=form,
-                         search_term=search_term,
-                         supplier_filter=supplier_filter,
-                         component_filter=component_filter,
-                         low_stock_only=low_stock_only)
+    """Display paginated list of parts with search and filtering"""
+    try:
+        form = SearchForm()
+        
+        # Get search and filter parameters
+        search_term = request.args.get('search_term', '').strip()
+        description_filter = request.args.get('description_filter', '').strip()
+        type_filter = request.args.get('type_filter', '')
+        low_stock_only = request.args.get('low_stock_only', '')
+        page = request.args.get('page', 1, type=int)
+        
+        # Start with base query
+        query = MainBOMStorage.query
+        
+        # Apply search term filter (searches part number, name, and supplier)
+        if search_term:
+            query = query.filter(
+                db.or_(
+                    MainBOMStorage.part_number.ilike(f'%{search_term}%'),
+                    MainBOMStorage.part_name.ilike(f'%{search_term}%'),
+                    MainBOMStorage.supplier.ilike(f'%{search_term}%')
+                )
+            )
+        
+        # Apply description filter
+        if description_filter:
+            query = query.filter(MainBOMStorage.part_name.ilike(f'%{description_filter}%'))
+        
+        # Apply type filter
+        if type_filter:
+            query = query.filter(MainBOMStorage.consumable_or_essential == type_filter)
+        
+        # Apply stock level filters
+        if low_stock_only == 'low':
+            query = query.filter(
+                db.and_(
+                    MainBOMStorage.lrv_coverage < 10,
+                    MainBOMStorage.qty_current_stock > 0
+                )
+            )
+        elif low_stock_only == 'out':
+            query = query.filter(MainBOMStorage.qty_current_stock <= 0)
+        
+        # Order by part number
+        query = query.order_by(MainBOMStorage.part_number)
+        
+        # Paginate results
+        per_page = 20  # Adjust as needed
+        parts = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        return render_template('parts_list.html',
+                             parts=parts,
+                             form=form,
+                             search_term=search_term,
+                             description_filter=description_filter,
+                             type_filter=type_filter,
+                             low_stock_only=low_stock_only)
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in parts_list: {str(e)}')
+        flash('Error loading parts list. Please try again.', 'error')
+        return redirect(url_for('main.dashboard'))
+
 
 @main.route('/delivery_log', methods=['GET', 'POST'])
 def delivery_log():
@@ -139,6 +154,7 @@ def delivery_log():
     recent_deliveries = DeliveryLog.query.order_by(DeliveryLog.created_at.desc()).limit(20).all()
     
     return render_template('delivery_form.html', form=form, recent_deliveries=recent_deliveries)
+
 
 @main.route('/stock_adjustment', methods=['GET', 'POST'])
 def stock_adjustment():
@@ -180,6 +196,7 @@ def stock_adjustment():
         return redirect(url_for('main.stock_adjustment'))
     
     return render_template('stock_adjust.html', form=form)
+
 
 @main.route('/train_calculator', methods=['GET', 'POST'])
 def train_calculator():
@@ -229,6 +246,7 @@ def train_calculator():
     
     return render_template('dashboard.html', form=form, results=results, show_calculator=True)
 
+
 @main.route('/api/part_autocomplete')
 def part_autocomplete():
     """API endpoint for part number autocomplete"""
@@ -243,7 +261,9 @@ def part_autocomplete():
     results = [{'part_number': p.part_number, 'part_name': p.part_name or ''} for p in parts]
     return jsonify(results)
 
+
 # Additional routes for enhanced functionality
+
 
 @main.route('/edit_part/<int:part_id>', methods=['GET', 'POST'])
 def edit_part(part_id):
@@ -274,6 +294,7 @@ def edit_part(part_id):
         return redirect(url_for('main.parts_list'))
     
     return render_template('edit_part.html', form=form, part=bom_item)
+
 
 @main.route('/add_part', methods=['GET', 'POST'])
 def add_part():
@@ -312,6 +333,7 @@ def add_part():
         return redirect(url_for('main.parts_list'))
     
     return render_template('add_part.html', form=form)
+
 
 @main.route('/export_shipment', methods=['GET', 'POST'])
 def export_shipment():
@@ -367,6 +389,7 @@ def export_shipment():
     
     return render_template('export_shipment.html', parts=all_parts, divisions=divisions)
 
+
 @main.route('/inventory_report')
 def inventory_report():
     """Generate comprehensive inventory report"""
@@ -380,7 +403,6 @@ def inventory_report():
     all_items = MainBOMStorage.query.all()
     
     # Recent deliveries (last 30 days)
-    from datetime import date, timedelta
     thirty_days_ago = date.today() - timedelta(days=30)
     recent_deliveries = DeliveryLog.query.filter(
         DeliveryLog.date_received >= thirty_days_ago
@@ -397,6 +419,7 @@ def inventory_report():
                          all_items=all_items,
                          recent_deliveries=recent_deliveries,
                          recent_adjustments=recent_adjustments)
+
 
 @main.route('/api/dashboard_data')
 def dashboard_data():
