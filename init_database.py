@@ -11,6 +11,18 @@ def safe_str(val, maxlen):
     s = str(val)
     return s[:maxlen]
 
+def safe_float(val):
+    """Convert to float if possible, else 0.0"""
+    try:
+        if pd.isna(val) or val == "" or str(val).startswith("#") or str(val).strip() == "":
+            return 0.0
+        s = str(val).replace(",", "").strip()
+        if s in ["#VALUE!", "nan"]:
+            return 0.0
+        return float(s)
+    except Exception:
+        return 0.0
+
 def load_bom_seed_csv():
     """Load data from bom_seed.csv and insert/update all records in MainBOMStorage."""
     app = create_app()
@@ -36,14 +48,24 @@ def load_bom_seed_csv():
                 component = safe_str(row.get('Component', ''), 99)
                 consumable_or_essential = safe_str(row.get('Type', ''), 99)
                 order_status = safe_str(row.get('Order Status', ''), 99)
-                notes = safe_str(row.get('Notes', ''), 99)
+                notes = safe_str(row.get('Notes', ''), 255)
 
-                qty_per_lrv = float(row.get('Qty per LRV', 0) or 0)
-                qty_on_site = float(row.get('Qty in Site Inventory', 0) or 0)
-                qty_current_stock = float(row.get('Qty Remaining', 0) or 0)
-                total_needed_233_lrv = qty_per_lrv * 233
-                lrv_coverage = float(row.get('Stock for Number of Trains', 0) or 0)
+                qty_per_lrv = safe_float(row.get('Qty per LRV', 0))
+                no_of_car = safe_float(row.get('No. of car', 0))
+                total_needed = safe_float(row.get('Total', 0))
+                qty_on_site = safe_float(row.get('Qty on Site', 0))
+                qty_shipped_out = safe_float(row.get('Shipped out of store', 0))
+                qty_should_be_remaining = safe_float(row.get('Qty should be remaining', 0))
+                qty_actual_remaining = safe_float(row.get('Qty actually remaining', 0))
+                back_order_qty = safe_float(row.get('Back Order \n Qty', 0))
+                more_needed_50 = safe_float(row.get('More needed for 50', 0))
 
+                stock_for_trains = safe_float(row.get('Stock for Number of Trains', 0))
+                next_delivery_trains = safe_float(row.get('No. of Trains Next Delivery', 0))
+                qty_required_more_trains = safe_float(row.get('Qty Required for # More Trains', 0))
+
+                # Choose what to map/import:
+                # For a comprehensive BOM, these are typical model fields. You can expand your MainBOMStorage model to add more.
                 part = MainBOMStorage.query.filter_by(part_number=part_number).first()
                 if part:
                     part.part_name = part_name
@@ -51,12 +73,14 @@ def load_bom_seed_csv():
                     part.component = component
                     part.qty_per_lrv = qty_per_lrv
                     part.qty_on_site = qty_on_site
-                    part.qty_current_stock = qty_current_stock
+                    part.qty_shipped_out = qty_shipped_out
+                    part.qty_current_stock = qty_actual_remaining
                     part.notes = notes
                     part.order_status = order_status
                     part.consumable_or_essential = consumable_or_essential
-                    part.total_needed_233_lrv = total_needed_233_lrv
-                    part.lrv_coverage = lrv_coverage
+                    part.total_needed_233_lrv = total_needed
+                    part.lrv_coverage = stock_for_trains
+                    part.back_order_qty = back_order_qty
                     part.updated_at = datetime.utcnow()
                     part.calculate_lrv_coverage()
                     updated_count += 1
@@ -68,12 +92,14 @@ def load_bom_seed_csv():
                         component=component,
                         qty_per_lrv=qty_per_lrv,
                         qty_on_site=qty_on_site,
-                        qty_current_stock=qty_current_stock,
+                        qty_shipped_out=qty_shipped_out,
+                        qty_current_stock=qty_actual_remaining,
                         notes=notes,
                         order_status=order_status,
                         consumable_or_essential=consumable_or_essential,
-                        total_needed_233_lrv=total_needed_233_lrv,
-                        lrv_coverage=lrv_coverage,
+                        total_needed_233_lrv=total_needed,
+                        lrv_coverage=stock_for_trains,
+                        back_order_qty=back_order_qty,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
                     )
