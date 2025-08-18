@@ -60,46 +60,46 @@
 </div>
 {% endif %}
 
-<!-- Clean Parts Table -->
+<!-- Parts Table with Proper Borders -->
 <div class="card">
     <div class="card-body p-0">
         {% if parts.items %}
         <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
+            <table class="table table-bordered table-striped table-hover mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th class="px-3 py-3">Part Number</th>
-                        <th class="px-3 py-3">Description</th>
-                        <th class="px-3 py-3">Supplier</th>
-                        <th class="px-3 py-3">Component</th>
-                        <th class="px-3 py-3">Type</th>
-                        <th class="px-3 py-3 text-center">Qty/LRV</th>
-                        <th class="px-3 py-3 text-center">On Site</th>
-                        <th class="px-3 py-3 text-center">Current Stock</th>
-                        <th class="px-3 py-3 text-center">LRV Coverage</th>
-                        <th class="px-3 py-3 text-center">Status</th>
-                        <th class="px-3 py-3 text-center">Actions</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Description</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Supplier</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Component</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Type</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty/LRV</th>
+                        <th class="border border-secondary px-3 py-3 text-center">On Site</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
+                        <th class="border border-secondary px-3 py-3 text-center">LRV Coverage</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Status</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for part in parts.items %}
                     <tr class="{% if part.qty_current_stock <= 0 %}table-danger{% elif part.lrv_coverage < 10 %}table-warning{% endif %}">
-                        <td class="px-3 py-2">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
                             <strong class="text-primary">{{ part.part_number }}</strong>
                         </td>
-                        <td class="px-3 py-2">
+                        <td class="border border-secondary px-3 py-3 align-middle">
                             <div class="fw-medium">{{ part.part_name or '-' }}</div>
                             {% if part.notes %}
-                            <small class="text-muted">{{ part.notes[:60] }}{% if part.notes|length > 60 %}...{% endif %}</small>
+                            <small class="text-muted">{{ part.notes[:40] }}{% if part.notes|length > 40 %}...{% endif %}</small>
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
                             <span class="badge bg-light text-dark">{{ part.supplier or '-' }}</span>
                         </td>
-                        <td class="px-3 py-2">
-                            <small class="text-muted">{{ part.component[:40] if part.component else '-' }}{% if part.component and part.component|length > 40 %}...{% endif %}</small>
+                        <td class="border border-secondary px-3 py-3 align-middle">
+                            <small class="text-muted">{{ part.component[:30] if part.component else '-' }}{% if part.component and part.component|length > 30 %}...{% endif %}</small>
                         </td>
-                        <td class="px-3 py-2">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
                             {% if part.consumable_or_essential == 'Long Lead' %}
                                 <span class="badge bg-warning text-dark">Long Lead</span>
                             {% elif part.consumable_or_essential == 'Consumables' %}
@@ -110,23 +110,23 @@
                                 <span class="badge bg-secondary">{{ part.consumable_or_essential or 'N/A' }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
                             <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
                         </td>
-                        <td class="px-3 py-2 text-center">
-                            <span class="text-info">{{ part.qty_on_site or 0 }}</span>
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                            <span class="text-info fw-medium">{{ part.qty_on_site or 0 }}</span>
                         </td>
-                        <td class="px-3 py-2 text-center">
-                            <span class="fw-bold {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                            <span class="fw-bold fs-5 {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
                                 {{ part.qty_current_stock or 0 }}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-center">
-                            <span class="{% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                            <span class="fw-medium {% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
                                 {{ "%.1f"|format(part.lrv_coverage or 0) }}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="border border-secondary px-3 py-3 text-center align-middle">
                             {% if part.qty_current_stock <= 0 %}
                                 <span class="badge bg-danger">Out of Stock</span>
                             {% elif part.lrv_coverage < 5 %}
@@ -137,20 +137,20 @@
                                 <span class="badge bg-success">OK</span>
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                        <td class="border border-secondary px-2 py-3 text-center align-middle">
+                            <div class="d-flex flex-column gap-1">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100" 
                                         data-bs-toggle="modal" data-bs-target="#partModal{{ part.id }}" 
                                         title="View Details">
-                                    <i class="fas fa-eye"></i>
+                                    <i class="fas fa-eye"></i> View
                                 </button>
                                 <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
-                                   class="btn btn-outline-success btn-sm" title="Add Delivery">
-                                    <i class="fas fa-plus"></i>
+                                   class="btn btn-outline-success btn-sm w-100" title="Add Delivery">
+                                    <i class="fas fa-plus"></i> Add Delivery
                                 </a>
                                 <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
-                                   class="btn btn-outline-warning btn-sm" title="Adjust Stock">
-                                    <i class="fas fa-edit"></i>
+                                   class="btn btn-outline-warning btn-sm w-100" title="Adjust Stock">
+                                    <i class="fas fa-edit"></i> Adjust
                                 </a>
                             </div>
                         </td>
@@ -170,32 +170,32 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <h6><i class="fas fa-info-circle text-primary"></i> Basic Information</h6>
-                                            <table class="table table-sm table-borderless">
-                                                <tr><td class="fw-bold">Part Number:</td><td>{{ part.part_number }}</td></tr>
-                                                <tr><td class="fw-bold">Description:</td><td>{{ part.part_name or '-' }}</td></tr>
-                                                <tr><td class="fw-bold">Supplier:</td><td>{{ part.supplier or '-' }}</td></tr>
-                                                <tr><td class="fw-bold">Component:</td><td>{{ part.component or '-' }}</td></tr>
-                                                <tr><td class="fw-bold">Type:</td><td>{{ part.consumable_or_essential or '-' }}</td></tr>
-                                                <tr><td class="fw-bold">Order Status:</td><td>{{ part.order_status or '-' }}</td></tr>
+                                            <table class="table table-bordered table-sm">
+                                                <tr><td class="fw-bold bg-light">Part Number:</td><td>{{ part.part_number }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Description:</td><td>{{ part.part_name or '-' }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Supplier:</td><td>{{ part.supplier or '-' }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Component:</td><td>{{ part.component or '-' }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Type:</td><td>{{ part.consumable_or_essential or '-' }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Order Status:</td><td>{{ part.order_status or '-' }}</td></tr>
                                             </table>
                                         </div>
                                         <div class="col-md-6">
                                             <h6><i class="fas fa-warehouse text-success"></i> Stock Information</h6>
-                                            <table class="table table-sm table-borderless">
-                                                <tr><td class="fw-bold">Qty per LRV:</td><td>{{ part.qty_per_lrv or 0 }}</td></tr>
-                                                <tr><td class="fw-bold">Total for 233 LRV:</td><td>{{ part.total_needed_233_lrv or 0 }}</td></tr>
-                                                <tr><td class="fw-bold">Total Received:</td><td>{{ part.qty_on_site or 0 }}</td></tr>
-                                                <tr><td class="fw-bold">Shipped Out:</td><td>{{ part.qty_shipped_out or 0 }}</td></tr>
-                                                <tr><td class="fw-bold">Current Stock:</td><td class="fw-bold {% if part.qty_current_stock <= 0 %}text-danger{% else %}text-success{% endif %}">{{ part.qty_current_stock or 0 }}</td></tr>
-                                                <tr><td class="fw-bold">LRV Coverage:</td><td>{{ "%.1f"|format(part.lrv_coverage or 0) }} trains</td></tr>
-                                                <tr><td class="fw-bold">Back Ordered:</td><td>{{ part.back_order_qty or 0 }}</td></tr>
+                                            <table class="table table-bordered table-sm">
+                                                <tr><td class="fw-bold bg-light">Qty per LRV:</td><td>{{ part.qty_per_lrv or 0 }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Total for 233 LRV:</td><td>{{ part.total_needed_233_lrv or 0 }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Total Received:</td><td>{{ part.qty_on_site or 0 }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Shipped Out:</td><td>{{ part.qty_shipped_out or 0 }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">Current Stock:</td><td class="fw-bold {% if part.qty_current_stock <= 0 %}text-danger{% else %}text-success{% endif %}">{{ part.qty_current_stock or 0 }}</td></tr>
+                                                <tr><td class="fw-bold bg-light">LRV Coverage:</td><td>{{ "%.1f"|format(part.lrv_coverage or 0) }} trains</td></tr>
+                                                <tr><td class="fw-bold bg-light">Back Ordered:</td><td>{{ part.back_order_qty or 0 }}</td></tr>
                                             </table>
                                         </div>
                                     </div>
                                     {% if part.notes %}
                                     <div class="mt-3">
                                         <h6><i class="fas fa-sticky-note text-warning"></i> Notes</h6>
-                                        <div class="alert alert-light">{{ part.notes }}</div>
+                                        <div class="alert alert-light border">{{ part.notes }}</div>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -257,7 +257,7 @@
                     
                     {% if parts.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('main.parts_list', page=parts.next_num,
+                        <a href="{{ url_for('main.parts_list', page=parts.next_num,
                            search_term=search_term, supplier_filter=supplier_filter,
                            component_filter=component_filter, low_stock_only=low_stock_only) }}">
                             Next <i class="fas fa-chevron-right"></i>
@@ -283,7 +283,7 @@
 {% if parts.items %}
 <div class="row mt-4">
     <div class="col-md-3">
-        <div class="card bg-primary text-white">
+        <div class="card bg-primary text-white border">
             <div class="card-body text-center">
                 <h5 class="card-title">Total Parts</h5>
                 <h2>{{ parts.total }}</h2>
@@ -291,7 +291,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-success text-white">
+        <div class="card bg-success text-white border">
             <div class="card-body text-center">
                 <h5 class="card-title">In Stock</h5>
                 <h2>{{ parts.items|selectattr("qty_current_stock", "gt", 0)|list|length }}</h2>
@@ -299,7 +299,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-warning text-white">
+        <div class="card bg-warning text-white border">
             <div class="card-body text-center">
                 <h5 class="card-title">Low Stock</h5>
                 <h2>{{ parts.items|selectattr("lrv_coverage", "lt", 10)|selectattr("qty_current_stock", "gt", 0)|list|length }}</h2>
@@ -307,7 +307,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-danger text-white">
+        <div class="card bg-danger text-white border">
             <div class="card-body text-center">
                 <h5 class="card-title">Out of Stock</h5>
                 <h2>{{ parts.items|selectattr("qty_current_stock", "eq", 0)|list|length }}</h2>
@@ -336,11 +336,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableRows = document.querySelectorAll('tbody tr');
     tableRows.forEach(row => {
         row.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.01)';
+            this.style.transform = 'scale(1.005)';
             this.style.transition = 'transform 0.2s ease';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
         });
         row.addEventListener('mouseleave', function() {
             this.style.transform = 'scale(1)';
+            this.style.boxShadow = 'none';
         });
     });
 });
