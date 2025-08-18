@@ -4,12 +4,18 @@ from datetime import datetime
 from app import create_app, db
 from app.models import MainBOMStorage
 
+def safe_str(val, maxlen):
+    """Convert to string and cut to maxlen chars, unless empty/NaN."""
+    if pd.isna(val):
+        return ""
+    s = str(val)
+    return s[:maxlen]
+
 def load_bom_seed_csv():
     """Load data from bom_seed.csv and insert/update all records in MainBOMStorage."""
     app = create_app()
     with app.app_context():
         try:
-            # Read CSV from root folder
             csv_path = os.path.join(os.getcwd(), "bom_seed.csv")
             if not os.path.isfile(csv_path):
                 print(f"File not found: {csv_path}")
@@ -20,32 +26,26 @@ def load_bom_seed_csv():
             imported_count = 0
             updated_count = 0
 
-            # Insert or update each row
             for i, row in df.iterrows():
-                part_number = str(row.get('Part Number', '')).strip()
+                part_number = safe_str(row.get('Part Number', ''), 99)
                 if not part_number:
                     continue
 
-                # Map CSV columns to model fields
-                part_name = str(row.get('Description', '')).strip()
-                supplier = str(row.get('Supplier', '')).strip()
-                component = str(row.get('Component', '')).strip()
+                part_name = safe_str(row.get('Description', ''), 99)
+                supplier = safe_str(row.get('Supplier', ''), 99)
+                component = safe_str(row.get('Component', ''), 99)
+                consumable_or_essential = safe_str(row.get('Type', ''), 99)
+                order_status = safe_str(row.get('Order Status', ''), 99)
+                notes = safe_str(row.get('Notes', ''), 99)
+
                 qty_per_lrv = float(row.get('Qty per LRV', 0) or 0)
                 qty_on_site = float(row.get('Qty in Site Inventory', 0) or 0)
                 qty_current_stock = float(row.get('Qty Remaining', 0) or 0)
-                notes = str(row.get('Notes', '') if not pd.isna(row.get('Notes', '')) else "").strip()
-                order_status = str(row.get('Order Status', '') if not pd.isna(row.get('Order Status', '')) else "").strip()
-                consumable_or_essential = str(row.get('Type', '') if not pd.isna(row.get('Type', '')) else "Essential").strip()
-                # Optional: Add other fields you want from the CSV
-
-                # Compute total_needed_233_lrv if you want (else remove this)
                 total_needed_233_lrv = qty_per_lrv * 233
                 lrv_coverage = float(row.get('Stock for Number of Trains', 0) or 0)
 
-                # Try to find existing part
                 part = MainBOMStorage.query.filter_by(part_number=part_number).first()
                 if part:
-                    # Update fields
                     part.part_name = part_name
                     part.supplier = supplier
                     part.component = component
@@ -61,7 +61,6 @@ def load_bom_seed_csv():
                     part.calculate_lrv_coverage()
                     updated_count += 1
                 else:
-                    # Insert new record
                     new_part = MainBOMStorage(
                         part_number=part_number,
                         part_name=part_name,
@@ -88,7 +87,6 @@ def load_bom_seed_csv():
             print(f"Total parts in database: {MainBOMStorage.query.count()}")
 
             return True
-
         except Exception as e:
             print(f"Error loading BOM seed CSV: {e}")
             db.session.rollback()
@@ -102,8 +100,6 @@ def init_database():
             print("Initializing database...")
             db.create_all()
             print("Database tables created successfully!")
-
-            # Always import data for a true "seed" script—otherwise, comment out if you want one-time only
             return load_bom_seed_csv()
 
         except Exception as e:
