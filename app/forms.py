@@ -3,6 +3,7 @@ from wtforms import StringField, FloatField, TextAreaField, SelectField, DateFie
 from wtforms.validators import DataRequired, NumberRange, Length, Optional
 from datetime import datetime
 
+
 class DeliveryForm(FlaskForm):
     """Form for logging new deliveries"""
     part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
@@ -12,6 +13,7 @@ class DeliveryForm(FlaskForm):
     date_received = DateField('Date Received', validators=[DataRequired()], default=datetime.today)
     date_expected = DateField('Expected Date (Future Deliveries)', validators=[Optional()])
     notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
+
 
 class StockAdjustmentForm(FlaskForm):
     """Form for manual stock adjustments"""
@@ -32,6 +34,7 @@ class StockAdjustmentForm(FlaskForm):
     notes = TextAreaField('Notes/Details', validators=[Optional(), Length(max=500)])
     user_name = StringField('Your Name', validators=[DataRequired(), Length(max=100)])
 
+
 class BOMItemForm(FlaskForm):
     """Form for editing BOM items - updated to match new schema"""
     part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
@@ -48,19 +51,27 @@ class BOMItemForm(FlaskForm):
     
     notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
 
+
 class SearchForm(FlaskForm):
     """Search form for parts list"""
     search_term = StringField('Search Parts', validators=[Optional(), Length(max=100)])
-    supplier_filter = SelectField('Filter by Supplier', choices=[('', 'All Suppliers')], validators=[Optional()])
-    component_filter = SelectField('Filter by Component', choices=[('', 'All Components')], validators=[Optional()])
+    description_filter = StringField('Filter by Description', validators=[Optional(), Length(max=100)])
+    type_filter = SelectField('Filter by Type', 
+                            choices=[('', 'All Types'), 
+                                   ('Long Lead', 'Long Lead'), 
+                                   ('Consumables', 'Consumables'),
+                                   ('Quick Delivery', 'Quick Delivery')], 
+                            validators=[Optional()])
     low_stock_only = SelectField('Stock Level', 
                                 choices=[('', 'All Items'), ('low', 'Low Stock Only'), ('out', 'Out of Stock Only')],
                                 validators=[Optional()])
+
 
 class TrainCalculatorForm(FlaskForm):
     """Form for calculating parts needed for specific number of trains"""
     num_trains = IntegerField('Number of Trains', validators=[DataRequired(), NumberRange(min=1, max=1000)])
     part_number = StringField('Specific Part Number (optional)', validators=[Optional(), Length(max=100)])
+
 
 class UpdateInventoryForm(FlaskForm):
     """Form for updating inventory levels from Excel"""

@@ -20,13 +20,13 @@
             </div>
             
             <div class="col-md-2">
-                {{ form.supplier_filter.label(class="form-label") }}
-                {{ form.supplier_filter(class="form-select") }}
+                {{ form.description_filter.label(class="form-label") }}
+                {{ form.description_filter(class="form-control", placeholder="Filter by description") }}
             </div>
             
             <div class="col-md-2">
-                {{ form.component_filter.label(class="form-label") }}
-                {{ form.component_filter(class="form-select") }}
+                {{ form.type_filter.label(class="form-label") }}
+                {{ form.type_filter(class="form-select") }}
             </div>
             
             <div class="col-md-2">
@@ -54,7 +54,7 @@
 <div class="alert alert-info">
     <i class="fas fa-info-circle"></i> 
     Showing {{ parts.items|length }} of {{ parts.total }} parts
-    {% if search_term or supplier_filter or component_filter or low_stock_only %}
+    {% if search_term or description_filter or type_filter or low_stock_only %}
         (filtered)
     {% endif %}
 </div>
@@ -230,8 +230,8 @@
                     {% if parts.has_prev %}
                     <li class="page-item">
                         <a class="page-link" href="{{ url_for('main.parts_list', page=parts.prev_num,
-                           search_term=search_term, supplier_filter=supplier_filter, 
-                           component_filter=component_filter, low_stock_only=low_stock_only) }}">
+                           search_term=search_term, description_filter=description_filter, 
+                           type_filter=type_filter, low_stock_only=low_stock_only) }}">
                             <i class="fas fa-chevron-left"></i> Previous
                         </a>
                     </li>
@@ -242,8 +242,8 @@
                             {% if page_num != parts.page %}
                             <li class="page-item">
                                 <a class="page-link" href="{{ url_for('main.parts_list', page=page_num,
-                                   search_term=search_term, supplier_filter=supplier_filter,
-                                   component_filter=component_filter, low_stock_only=low_stock_only) }}">{{ page_num }}</a>
+                                   search_term=search_term, description_filter=description_filter,
+                                   type_filter=type_filter, low_stock_only=low_stock_only) }}">{{ page_num }}</a>
                             </li>
                             {% else %}
                             <li class="page-item active">
@@ -260,8 +260,8 @@
                     {% if parts.has_next %}
                     <li class="page-item">
                         <a class="page-link" href="{{ url_for('main.parts_list', page=parts.next_num,
-                           search_term=search_term, supplier_filter=supplier_filter,
-                           component_filter=component_filter, low_stock_only=low_stock_only) }}">
+                           search_term=search_term, description_filter=description_filter,
+                           type_filter=type_filter, low_stock_only=low_stock_only) }}">
                             Next <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
