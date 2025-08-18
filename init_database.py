@@ -126,7 +126,7 @@ def init_database():
             print("Initializing database...")
             db.create_all()
             print("Database tables created successfully!")
-            return load_bom_seed_csv()
+            return True
 
         except Exception as e:
             print(f"Database initialization error: {e}")
