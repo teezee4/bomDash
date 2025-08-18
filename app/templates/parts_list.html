@@ -84,22 +84,22 @@
                 <tbody>
                     {% for part in parts.items %}
                     <tr class="{% if part.qty_current_stock <= 0 %}table-danger{% elif part.lrv_coverage < 10 %}table-warning{% endif %}">
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <strong class="text-primary">{{ part.part_number }}</strong>
                         </td>
-                        <td class="border border-secondary px-3 py-3 align-middle">
+                        <td class="border border-secondary px-3 py-2 align-middle">
                             <div class="fw-medium">{{ part.part_name or '-' }}</div>
                             {% if part.notes %}
                             <small class="text-muted">{{ part.notes[:40] }}{% if part.notes|length > 40 %}...{% endif %}</small>
                             {% endif %}
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="badge bg-light text-dark">{{ part.supplier or '-' }}</span>
                         </td>
-                        <td class="border border-secondary px-3 py-3 align-middle">
+                        <td class="border border-secondary px-3 py-2 align-middle">
                             <small class="text-muted">{{ part.component[:30] if part.component else '-' }}{% if part.component and part.component|length > 30 %}...{% endif %}</small>
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             {% if part.consumable_or_essential == 'Long Lead' %}
                                 <span class="badge bg-warning text-dark">Long Lead</span>
                             {% elif part.consumable_or_essential == 'Consumables' %}
@@ -107,26 +107,26 @@
                             {% elif part.consumable_or_essential == 'Quick Delivery' %}
                                 <span class="badge bg-success">Quick Delivery</span>
                             {% else %}
-                                <span class="badge bg-secondary">{{ part.consumable_or_essential or 'N/A' }}</span>
+                                <span class="badge bg-secondary">{{ part.consumable_or_essential or 'Essential' }}</span>
                             {% endif %}
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="text-info fw-medium">{{ part.qty_on_site or 0 }}</span>
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="fw-bold fs-5 {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
                                 {{ part.qty_current_stock or 0 }}
                             </span>
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="fw-medium {% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
                                 {{ "%.1f"|format(part.lrv_coverage or 0) }}
                             </span>
                         </td>
-                        <td class="border border-secondary px-3 py-3 text-center align-middle">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
                             {% if part.qty_current_stock <= 0 %}
                                 <span class="badge bg-danger">Out of Stock</span>
                             {% elif part.lrv_coverage < 5 %}
@@ -137,88 +137,90 @@
                                 <span class="badge bg-success">OK</span>
                             {% endif %}
                         </td>
-                        <td class="border border-secondary px-2 py-3 text-center align-middle">
+                        <td class="border border-secondary px-2 py-2 text-center align-middle">
                             <div class="d-flex flex-column gap-1">
-                                <button type="button" class="btn btn-outline-primary btn-sm w-100" 
-                                        data-bs-toggle="modal" data-bs-target="#partModal{{ part.id }}" 
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        data-bs-toggle="modal" data-bs-target="#partModal{{ loop.index }}" 
                                         title="View Details">
                                     <i class="fas fa-eye"></i> View
                                 </button>
                                 <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
-                                   class="btn btn-outline-success btn-sm w-100" title="Add Delivery">
-                                    <i class="fas fa-plus"></i> Add Delivery
+                                   class="btn btn-outline-success btn-sm" title="Add Delivery">
+                                    <i class="fas fa-plus"></i> Add
                                 </a>
                                 <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
-                                   class="btn btn-outline-warning btn-sm w-100" title="Adjust Stock">
+                                   class="btn btn-outline-warning btn-sm" title="Adjust Stock">
                                     <i class="fas fa-edit"></i> Adjust
                                 </a>
                             </div>
                         </td>
                     </tr>
-                    
-                    <!-- Part Details Modal -->
-                    <div class="modal fade" id="partModal{{ part.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-xl">
-                            <div class="modal-content">
-                                <div class="modal-header bg-primary text-white">
-                                    <h5 class="modal-title">
-                                        <i class="fas fa-box"></i> {{ part.part_number }} - {{ part.part_name }}
-                                    </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h6><i class="fas fa-info-circle text-primary"></i> Basic Information</h6>
-                                            <table class="table table-bordered table-sm">
-                                                <tr><td class="fw-bold bg-light">Part Number:</td><td>{{ part.part_number }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Description:</td><td>{{ part.part_name or '-' }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Supplier:</td><td>{{ part.supplier or '-' }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Component:</td><td>{{ part.component or '-' }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Type:</td><td>{{ part.consumable_or_essential or '-' }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Order Status:</td><td>{{ part.order_status or '-' }}</td></tr>
-                                            </table>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6><i class="fas fa-warehouse text-success"></i> Stock Information</h6>
-                                            <table class="table table-bordered table-sm">
-                                                <tr><td class="fw-bold bg-light">Qty per LRV:</td><td>{{ part.qty_per_lrv or 0 }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Total for 233 LRV:</td><td>{{ part.total_needed_233_lrv or 0 }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Total Received:</td><td>{{ part.qty_on_site or 0 }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Shipped Out:</td><td>{{ part.qty_shipped_out or 0 }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">Current Stock:</td><td class="fw-bold {% if part.qty_current_stock <= 0 %}text-danger{% else %}text-success{% endif %}">{{ part.qty_current_stock or 0 }}</td></tr>
-                                                <tr><td class="fw-bold bg-light">LRV Coverage:</td><td>{{ "%.1f"|format(part.lrv_coverage or 0) }} trains</td></tr>
-                                                <tr><td class="fw-bold bg-light">Back Ordered:</td><td>{{ part.back_order_qty or 0 }}</td></tr>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    {% if part.notes %}
-                                    <div class="mt-3">
-                                        <h6><i class="fas fa-sticky-note text-warning"></i> Notes</h6>
-                                        <div class="alert alert-light border">{{ part.notes }}</div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                        <i class="fas fa-times"></i> Close
-                                    </button>
-                                    <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
-                                       class="btn btn-success">
-                                        <i class="fas fa-truck"></i> Add Delivery
-                                    </a>
-                                    <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
-                                       class="btn btn-warning">
-                                        <i class="fas fa-edit"></i> Adjust Stock
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        
+        <!-- All Modals Outside the Table -->
+        {% for part in parts.items %}
+        <div class="modal fade" id="partModal{{ loop.index }}" tabindex="-1" aria-labelledby="partModalLabel{{ loop.index }}" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="partModalLabel{{ loop.index }}">
+                            <i class="fas fa-box"></i> {{ part.part_number }} - {{ part.part_name }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle text-primary"></i> Basic Information</h6>
+                                <table class="table table-bordered table-sm">
+                                    <tr><td class="fw-bold bg-light">Part Number:</td><td>{{ part.part_number }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Description:</td><td>{{ part.part_name or '-' }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Supplier:</td><td>{{ part.supplier or '-' }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Component:</td><td>{{ part.component or '-' }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Type:</td><td>{{ part.consumable_or_essential or '-' }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Order Status:</td><td>{{ part.order_status or '-' }}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-warehouse text-success"></i> Stock Information</h6>
+                                <table class="table table-bordered table-sm">
+                                    <tr><td class="fw-bold bg-light">Qty per LRV:</td><td>{{ part.qty_per_lrv or 0 }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Total for 233 LRV:</td><td>{{ part.total_needed_233_lrv or 0 }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Total Received:</td><td>{{ part.qty_on_site or 0 }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Shipped Out:</td><td>{{ part.qty_shipped_out or 0 }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">Current Stock:</td><td class="fw-bold {% if part.qty_current_stock <= 0 %}text-danger{% else %}text-success{% endif %}">{{ part.qty_current_stock or 0 }}</td></tr>
+                                    <tr><td class="fw-bold bg-light">LRV Coverage:</td><td>{{ "%.1f"|format(part.lrv_coverage or 0) }} trains</td></tr>
+                                    <tr><td class="fw-bold bg-light">Back Ordered:</td><td>{{ part.back_order_qty or 0 }}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        {% if part.notes %}
+                        <div class="mt-3">
+                            <h6><i class="fas fa-sticky-note text-warning"></i> Notes</h6>
+                            <div class="alert alert-light border">{{ part.notes }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                        <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
+                           class="btn btn-success">
+                            <i class="fas fa-truck"></i> Add Delivery
+                        </a>
+                        <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
+                           class="btn btn-warning">
+                            <i class="fas fa-edit"></i> Adjust Stock
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
         
         <!-- Pagination -->
         {% if parts.pages > 1 %}
@@ -257,7 +259,7 @@
                     
                     {% if parts.has_next %}
                     <li class="page-item">
-                        <a href="{{ url_for('main.parts_list', page=parts.next_num,
+                        <a class="page-link" href="{{ url_for('main.parts_list', page=parts.next_num,
                            search_term=search_term, supplier_filter=supplier_filter,
                            component_filter=component_filter, low_stock_only=low_stock_only) }}">
                             Next <i class="fas fa-chevron-right"></i>
@@ -321,8 +323,8 @@
 
 {% block scripts %}
 <script>
-// Auto-populate part number in forms when coming from parts list
 document.addEventListener('DOMContentLoaded', function() {
+    // Auto-populate part number in forms when coming from parts list
     const urlParams = new URLSearchParams(window.location.search);
     const partNumber = urlParams.get('part_number');
     if (partNumber) {
@@ -332,13 +334,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Add hover effects and better UX
+    // Ensure all modals are hidden on page load
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    });
+    
+    // Remove any existing modal backdrops
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => backdrop.remove());
+    
+    // Remove modal-open class from body
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    // Add hover effects to table rows
     const tableRows = document.querySelectorAll('tbody tr');
     tableRows.forEach(row => {
         row.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.005)';
+            this.style.transform = 'scale(1.002)';
             this.style.transition = 'transform 0.2s ease';
-            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
         });
         row.addEventListener('mouseleave', function() {
             this.style.transform = 'scale(1)';
