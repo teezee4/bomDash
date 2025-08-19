@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Split Parts List - BOM Inventory{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-list"></i> Split Parts List
+        </h1>
+    </div>
+</div>
+
+<!-- Essential Parts -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Essential Parts</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if essentials %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Description</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Component</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty/LRV</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty Shipped Out</th>
+                        <th class="border border-secondary px-3 py-3 text-center">LRV Coverage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for part in essentials %}
+                    <tr>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <strong class="text-primary">{{ part.part_number }}</strong>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 align-middle">
+                            <div class="fw-medium">{{ part.part_name or '-' }}</div>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 align-middle">
+                            <small class="text-muted">{{ part.component[:30] if part.component else '-' }}</small>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
+                                {{ part.qty_current_stock or 0 }}
+                            </span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="text-info fw-medium">{{ part.qty_shipped_out or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium {% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
+                                {{ "%.1f"|format(part.lrv_coverage or 0) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No essential parts found.</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Consumables -->
+<div class="card">
+    <div class="card-header">
+        <h5>Consumable Parts</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if consumables %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Description</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Component</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty/LRV</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty Shipped Out</th>
+                        <th class="border border-secondary px-3 py-3 text-center">LRV Coverage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for part in consumables %}
+                    <tr>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <strong class="text-primary">{{ part.part_number }}</strong>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 align-middle">
+                            <div class="fw-medium">{{ part.part_name or '-' }}</div>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 align-middle">
+                            <small class="text-muted">{{ part.component[:30] if part.component else '-' }}</small>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
+                                {{ part.qty_current_stock or 0 }}
+                            </span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="text-info fw-medium">{{ part.qty_shipped_out or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium {% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
+                                {{ "%.1f"|format(part.lrv_coverage or 0) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No consumable parts found.</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

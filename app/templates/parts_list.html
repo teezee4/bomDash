@@ -21,7 +21,7 @@
             
             <div class="col-md-2">
                 {{ form.description_filter.label(class="form-label") }}
-                {{ form.description_filter(class="form-control", placeholder="Filter by description") }}
+                {{ form.description_filter(class="form-select") }}
             </div>
             
             <div class="col-md-2">
@@ -70,12 +70,12 @@
                     <tr>
                         <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
                         <th class="border border-secondary px-3 py-3 text-center">Description</th>
-                        <th class="border border-secondary px-3 py-3 text-center">Supplier</th>
                         <th class="border border-secondary px-3 py-3 text-center">Component</th>
                         <th class="border border-secondary px-3 py-3 text-center">Type</th>
                         <th class="border border-secondary px-3 py-3 text-center">Qty/LRV</th>
                         <th class="border border-secondary px-3 py-3 text-center">On Site</th>
                         <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty Shipped Out</th>
                         <th class="border border-secondary px-3 py-3 text-center">LRV Coverage</th>
                         <th class="border border-secondary px-3 py-3 text-center">Status</th>
                         <th class="border border-secondary px-3 py-3 text-center">Actions</th>
@@ -92,9 +92,6 @@
                             {% if part.notes %}
                             <small class="text-muted">{{ part.notes[:40] }}{% if part.notes|length > 40 %}...{% endif %}</small>
                             {% endif %}
-                        </td>
-                        <td class="border border-secondary px-3 py-2 text-center align-middle">
-                            <span class="badge bg-light text-dark">{{ part.supplier or '-' }}</span>
                         </td>
                         <td class="border border-secondary px-3 py-2 align-middle">
                             <small class="text-muted">{{ part.component[:30] if part.component else '-' }}{% if part.component and part.component|length > 30 %}...{% endif %}</small>
@@ -120,6 +117,9 @@
                             <span class="fw-bold fs-5 {% if part.qty_current_stock <= 0 %}text-danger{% elif part.qty_current_stock < 10 %}text-warning{% else %}text-success{% endif %}">
                                 {{ part.qty_current_stock or 0 }}
                             </span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="text-info fw-medium">{{ part.qty_shipped_out or 0 }}</span>
                         </td>
                         <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="fw-medium {% if part.lrv_coverage < 5 %}text-danger{% elif part.lrv_coverage < 10 %}text-warning{% else %}text-success{% endif %}">
@@ -151,6 +151,10 @@
                                 <a href="{{ url_for('main.stock_adjustment') }}?part_number={{ part.part_number }}"
                                    class="btn btn-outline-warning btn-sm" title="Adjust Stock">
                                     <i class="fas fa-edit"></i> Adjust
+                                </a>
+                                <a href="{{ url_for('main.edit_part', part_id=part.id) }}"
+                                   class="btn btn-outline-info btn-sm" title="Edit Part">
+                                    <i class="fas fa-pencil-alt"></i> Edit
                                 </a>
                             </div>
                         </td>

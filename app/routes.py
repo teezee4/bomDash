@@ -61,6 +61,10 @@ def parts_list():
         low_stock_only = request.args.get('low_stock_only', '')
         page = request.args.get('page', 1, type=int)
         
+        # Populate description filter choices
+        descriptions = db.session.query(MainBOMStorage.part_name).distinct().order_by(MainBOMStorage.part_name).all()
+        form.description_filter.choices = [('', 'All Descriptions')] + [(d[0], d[0]) for d in descriptions]
+
         # Start with base query
         query = MainBOMStorage.query
         
@@ -70,13 +74,13 @@ def parts_list():
                 db.or_(
                     MainBOMStorage.part_number.ilike(f'%{search_term}%'),
                     MainBOMStorage.part_name.ilike(f'%{search_term}%'),
-                    MainBOMStorage.supplier.ilike(f'%{search_term}%')
+                    MainBOMStorage.component.ilike(f'%{search_term}%')
                 )
             )
         
         # Apply description filter
         if description_filter:
-            query = query.filter(MainBOMStorage.part_name.ilike(f'%{description_filter}%'))
+            query = query.filter(MainBOMStorage.part_name == description_filter)
         
         # Apply type filter
         if type_filter:
@@ -273,16 +277,7 @@ def edit_part(part_id):
     
     if form.validate_on_submit():
         # Update all the fields
-        bom_item.part_number = form.part_number.data
-        bom_item.part_name = form.part_name.data
-        bom_item.description = form.description.data
-        bom_item.supplier = form.supplier.data
-        bom_item.component = form.component.data
-        bom_item.qty_per_lrv = form.qty_per_lrv.data
-        bom_item.qty_on_site = form.qty_on_site.data
-        bom_item.qty_current_stock = form.qty_current_stock.data
-        bom_item.consumable_or_essential = form.consumable_or_essential.data
-        bom_item.notes = form.notes.data
+        form.populate_obj(bom_item)
         
         # Recalculate dependent fields
         bom_item.total_needed_233_lrv = bom_item.qty_per_lrv * 233
@@ -435,3 +430,30 @@ def dashboard_data():
         'out_of_stock_parts': out_of_stock_parts,
         'total_stock_items': int(total_stock_items)
     })
+
+
+@main.route('/split_parts_list')
+def split_parts_list():
+    """Display parts list split into Essential and Consumables"""
+    try:
+        essentials = MainBOMStorage.query.filter_by(consumable_or_essential='Essential').order_by(MainBOMStorage.part_number).all()
+        consumables = MainBOMStorage.query.filter_by(consumable_or_essential='Consumables').order_by(MainBOMStorage.part_number).all()
+
+        return render_template('split_parts_list.html', essentials=essentials, consumables=consumables)
+
+    except Exception as e:
+        current_app.logger.error(f'Error in split_parts_list: {str(e)}')
+        flash('Error loading split parts list. Please try again.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@main.route('/dynamic_calculator')
+def dynamic_calculator():
+    """Display a dynamic parts calculator"""
+    try:
+        parts = MainBOMStorage.query.order_by(MainBOMStorage.part_number).all()
+        return render_template('dynamic_calculator.html', parts=parts)
+    except Exception as e:
+        current_app.logger.error(f'Error in dynamic_calculator: {str(e)}')
+        flash('Error loading dynamic calculator. Please try again.', 'error')
+        return redirect(url_for('main.dashboard'))
