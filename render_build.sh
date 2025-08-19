@@ -9,8 +9,11 @@ echo "Starting build process..."
 echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Initialize database with sample data (only run once)
-echo "Initializing database..."
+# Apply database migrations and seed sample data
+echo "Running database migrations..."
+FLASK_APP=app:create_app flask db upgrade
+
+echo "Seeding initial data..."
 python init_database.py
 
 echo "Build completed successfully!"
