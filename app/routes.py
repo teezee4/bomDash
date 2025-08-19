@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app import db
-from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdjustment
-from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm
+from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdjustment, DivisionInventory, DefectedPart
+from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm, DivisionForm, KitsSentForm, TrainsCompletedForm, DefectedPartForm
 from sqlalchemy import or_
+from sqlalchemy.orm import aliased
 import json
 from datetime import datetime, date, timedelta
 
@@ -457,3 +458,246 @@ def dynamic_calculator():
         current_app.logger.error(f'Error in dynamic_calculator: {str(e)}')
         flash('Error loading dynamic calculator. Please try again.', 'error')
         return redirect(url_for('main.dashboard'))
+
+
+@main.route('/divisions', methods=['GET', 'POST'])
+def list_divisions():
+    """List all inventory divisions and allow creating new ones"""
+    form = DivisionForm()
+    if form.validate_on_submit():
+        # Check if division name already exists
+        existing_division = InventoryDivision.query.filter_by(division_name=form.division_name.data).first()
+        if existing_division:
+            flash('A division with this name already exists.', 'error')
+        else:
+            new_division = InventoryDivision(
+                division_name=form.division_name.data,
+                location=form.location.data,
+                notes=form.notes.data
+            )
+            db.session.add(new_division)
+            db.session.commit()
+            flash(f'Division "{new_division.division_name}" created successfully.', 'success')
+            return redirect(url_for('main.list_divisions'))
+
+    divisions = InventoryDivision.query.order_by(InventoryDivision.division_name).all()
+    return render_template('divisions.html', divisions=divisions, form=form)
+
+
+@main.route('/division/<int:division_id>')
+def view_division(division_id):
+    """View the inventory for a specific division"""
+    division = InventoryDivision.query.get_or_404(division_id)
+    kits_form = KitsSentForm()
+    trains_form = TrainsCompletedForm()
+
+    # Alias for DivisionInventory to make the join explicit
+    div_inv_alias = aliased(DivisionInventory)
+
+    # Left outer join from MainBOMStorage to DivisionInventory
+    # This ensures all parts are listed, even if they haven't been added to the division yet
+    parts_query = db.session.query(
+        MainBOMStorage,
+        div_inv_alias
+    ).outerjoin(
+        div_inv_alias,
+        (MainBOMStorage.id == div_inv_alias.part_id) & (div_inv_alias.division_id == division_id)
+    ).order_by(MainBOMStorage.part_number)
+
+    parts_with_inventory = parts_query.all()
+
+    return render_template('division_inventory.html', division=division, parts_with_inventory=parts_with_inventory, kits_form=kits_form, trains_form=trains_form)
+
+
+@main.route('/division/<int:division_id>/send_kits', methods=['POST'])
+def send_kits(division_id):
+    """Handle the logic for sending kits to a division"""
+    division = InventoryDivision.query.get_or_404(division_id)
+    form = KitsSentForm()
+
+    if form.validate_on_submit():
+        num_kits = form.number_of_kits.data
+
+        try:
+            # --- Pre-check for stock availability ---
+            all_parts = MainBOMStorage.query.all()
+            parts_to_ship = []
+            for part in all_parts:
+                required_qty = part.qty_per_lrv * num_kits
+                if part.qty_current_stock < required_qty:
+                    flash(f'Insufficient stock for part "{part.part_number}". Required: {required_qty}, Available: {part.qty_current_stock}', 'error')
+                    return redirect(url_for('main.view_division', division_id=division_id))
+                parts_to_ship.append({'part': part, 'required': required_qty})
+
+            # --- If all checks pass, proceed with transaction ---
+            with db.session.begin_nested():
+                # Update division's kit count
+                division.kits_sent_to_site += num_kits
+                db.session.add(division)
+
+                # Update individual part quantities
+                for item in parts_to_ship:
+                    part = item['part']
+                    required_qty = item['required']
+
+                    # Deduct from main stock
+                    part.qty_current_stock -= required_qty
+                    part.qty_shipped_out += required_qty
+                    part.calculate_lrv_coverage()
+
+                    # Update division inventory
+                    div_inv = DivisionInventory.query.filter_by(division_id=division.id, part_id=part.id).first()
+                    if not div_inv:
+                        div_inv = DivisionInventory(division_id=division.id, part_id=part.id)
+                        db.session.add(div_inv)
+
+                    div_inv.qty_sent_to_site += required_qty
+
+                    db.session.add(part)
+                    db.session.add(div_inv)
+
+            db.session.commit()
+            flash(f'{num_kits} kit(s) successfully sent to {division.division_name}. Stock levels updated.', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while sending kits: {str(e)}', 'error')
+
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
+
+    return redirect(url_for('main.view_division', division_id=division_id))
+
+
+@main.route('/defected_parts', methods=['GET', 'POST'])
+def defected_parts():
+    """Log and view defected parts"""
+    form = DefectedPartForm()
+    # Populate division choices, including an option for no specific division
+    form.division_id.choices = [(div.id, div.division_name) for div in InventoryDivision.query.order_by('division_name')]
+    form.division_id.choices.insert(0, ('', 'N/A - Main Stock or Unspecified'))
+
+    if form.validate_on_submit():
+        # Find the corresponding BOM item to ensure part number is valid
+        bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
+        if not bom_item:
+            flash(f'Part number "{form.part_number.data}" not found in the main BOM.', 'error')
+        else:
+            new_defected_part = DefectedPart(
+                part_number=form.part_number.data,
+                part_name=form.part_name.data,
+                quantity=form.quantity.data,
+                division_id=form.division_id.data if form.division_id.data else None,
+                notes=form.notes.data
+            )
+            db.session.add(new_defected_part)
+            db.session.commit()
+            flash(f'Defected part "{new_defected_part.part_number}" logged successfully.', 'success')
+            return redirect(url_for('main.defected_parts'))
+
+    # Get list of all defected parts for display
+    defected_parts_list = DefectedPart.query.order_by(DefectedPart.date_reported.desc()).all()
+
+    return render_template('defected_parts.html', form=form, defected_parts=defected_parts_list)
+
+
+@main.route('/stock_overview')
+def stock_overview():
+    """Display a comprehensive stock overview across all divisions"""
+    search_term = request.args.get('search', '').strip()
+
+    # Base query for parts
+    parts_query = MainBOMStorage.query
+    if search_term:
+        parts_query = parts_query.filter(
+            or_(
+                MainBOMStorage.part_number.ilike(f'%{search_term}%'),
+                MainBOMStorage.part_name.ilike(f'%{search_term}%')
+            )
+        )
+
+    parts = parts_query.order_by(MainBOMStorage.part_number).all()
+    divisions = InventoryDivision.query.order_by(InventoryDivision.division_name).all()
+
+    # Create a lookup for division inventories to avoid N+1 queries
+    # { part_id: { division_id: qty_remaining } }
+    division_inventory_data = {}
+    div_inventories = DivisionInventory.query.all()
+    for item in div_inventories:
+        if item.part_id not in division_inventory_data:
+            division_inventory_data[item.part_id] = {}
+        division_inventory_data[item.part_id][item.division_id] = item.qty_remaining
+
+    # Prepare data for the template
+    stock_data = []
+    for part in parts:
+        part_data = {
+            'part': part,
+            'division_stock': []
+        }
+        for division in divisions:
+            stock = division_inventory_data.get(part.id, {}).get(division.id, 0)
+            part_data['division_stock'].append(stock)
+        stock_data.append(part_data)
+
+    return render_template('stock_overview.html',
+                           stock_data=stock_data,
+                           divisions=divisions,
+                           search_term=search_term)
+
+
+@main.route('/division/<int:division_id>/complete_trains', methods=['POST'])
+def complete_trains(division_id):
+    """Handle the logic for completing trains for a division"""
+    division = InventoryDivision.query.get_or_404(division_id)
+    form = TrainsCompletedForm()
+
+    if form.validate_on_submit():
+        num_trains = form.number_of_trains.data
+
+        try:
+            # --- Pre-check for availability of parts on site ---
+            all_parts_info = MainBOMStorage.query.all()
+            parts_to_consume = []
+            for part_info in all_parts_info:
+                required_qty = part_info.qty_per_lrv * num_trains
+
+                div_inv = DivisionInventory.query.filter_by(division_id=division.id, part_id=part_info.id).first()
+
+                # Check if there are enough parts remaining on site
+                if not div_inv or div_inv.qty_remaining < required_qty:
+                    remaining_qty = div_inv.qty_remaining if div_inv else 0
+                    flash(f'Insufficient parts on site for "{part_info.part_number}". Required: {required_qty}, Remaining: {remaining_qty}', 'error')
+                    return redirect(url_for('main.view_division', division_id=division_id))
+
+                parts_to_consume.append({'div_inv': div_inv, 'required': required_qty})
+
+            # --- If all checks pass, proceed with transaction ---
+            with db.session.begin_nested():
+                # Update division's completed trains count
+                division.trains_completed += num_trains
+                db.session.add(division)
+
+                # Update individual part consumption
+                for item in parts_to_consume:
+                    div_inv = item['div_inv']
+                    required_qty = item['required']
+
+                    div_inv.qty_used_on_site += required_qty
+                    db.session.add(div_inv)
+
+            db.session.commit()
+            flash(f'{num_trains} train(s) marked as completed for {division.division_name}. On-site quantities updated.', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while completing trains: {str(e)}', 'error')
+
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
+
+    return redirect(url_for('main.view_division', division_id=division_id))

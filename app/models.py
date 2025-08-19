@@ -104,6 +104,8 @@ class InventoryDivision(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     division_name = db.Column(db.String(50), nullable=False, unique=True, index=True)  # e.g., "Division 21"
+    location = db.Column(db.String(100), nullable=True, index=True)  # e.g., "Site A"
+    kits_sent_to_site = db.Column(db.Integer, nullable=False, default=0)
     trains_completed = db.Column(db.Integer, nullable=False, default=0)
     full_installation_kits = db.Column(db.Integer, nullable=False, default=0)
     notes = db.Column(db.Text)
@@ -111,9 +113,69 @@ class InventoryDivision(db.Model):
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    parts = db.relationship('DivisionInventory', back_populates='division', cascade="all, delete-orphan")
     
     def __repr__(self):
         return f'<InventoryDivision {self.division_name}: {self.trains_completed} trains>'
+
+
+class DivisionInventory(db.Model):
+    """Detailed part tracking for each division"""
+    __tablename__ = 'division_inventory'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Foreign Keys
+    division_id = db.Column(db.Integer, db.ForeignKey('inventory_division.id'), nullable=False)
+    part_id = db.Column(db.Integer, db.ForeignKey('main_bom_storage.id'), nullable=False)
+
+    # Quantity tracking
+    qty_sent_to_site = db.Column(db.Float, nullable=False, default=0.0)
+    qty_used_on_site = db.Column(db.Float, nullable=False, default=0.0)
+
+    # Notes
+    notes = db.Column(db.Text)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    division = db.relationship('InventoryDivision', back_populates='parts')
+    part = db.relationship('MainBOMStorage')
+
+    @property
+    def qty_remaining(self):
+        """Calculated property for remaining quantity"""
+        return self.qty_sent_to_site - self.qty_used_on_site
+
+    def __repr__(self):
+        return f'<DivisionInventory part={self.part.part_number} division={self.division.division_name}>'
+
+
+class DefectedPart(db.Model):
+    """Log for defected parts"""
+    __tablename__ = 'defected_parts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    part_number = db.Column(db.String(100), nullable=False, index=True)
+    part_name = db.Column(db.String(200), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+
+    # Foreign Key to Division
+    division_id = db.Column(db.Integer, db.ForeignKey('inventory_division.id'), nullable=True)
+    division = db.relationship('InventoryDivision', backref='defected_parts')
+
+    date_reported = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
+    notes = db.Column(db.Text)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<DefectedPart {self.part_number}: {self.quantity}>'
 
 class ToolsDeliveryLog(db.Model):
     """Tools delivery log - separate from materials"""

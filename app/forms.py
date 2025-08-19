@@ -81,3 +81,29 @@ class UpdateInventoryForm(FlaskForm):
                          choices=[('yes', 'Preview Changes Only'), ('no', 'Apply Changes')],
                          default='yes',
                          validators=[DataRequired()])
+
+
+class DivisionForm(FlaskForm):
+    """Form for creating and editing divisions"""
+    division_name = StringField('Division Name', validators=[DataRequired(), Length(max=50)])
+    location = StringField('Location', validators=[Optional(), Length(max=100)])
+    notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
+
+
+class KitsSentForm(FlaskForm):
+    """Form for sending kits to a division"""
+    number_of_kits = IntegerField('Number of Kits to Send', validators=[DataRequired(), NumberRange(min=1)])
+
+
+class TrainsCompletedForm(FlaskForm):
+    """Form for marking trains as completed for a division"""
+    number_of_trains = IntegerField('Number of Trains Completed', validators=[DataRequired(), NumberRange(min=1)])
+
+
+class DefectedPartForm(FlaskForm):
+    """Form for logging defected parts"""
+    part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
+    part_name = StringField('Part Name', validators=[DataRequired(), Length(max=200)])
+    quantity = FloatField('Quantity', validators=[DataRequired(), NumberRange(min=0.01)])
+    division_id = SelectField('Source Division (Optional)', coerce=int, validators=[Optional()])
+    notes = TextAreaField('Notes/Reason for Defect', validators=[DataRequired(), Length(max=500)])

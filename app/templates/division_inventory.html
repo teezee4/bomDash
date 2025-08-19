@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ division.division_name }} Inventory - BOM Inventory{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="fas fa-boxes me-2"></i>{{ division.division_name }}</h1>
+            <p class="lead text-muted"><i class="fas fa-map-marker-alt me-2"></i>Location: {{ division.location or 'N/A' }}</p>
+        </div>
+        <a href="{{ url_for('main.list_divisions') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to All Divisions
+        </a>
+    </div>
+
+    <!-- Stats and Actions -->
+    <div class="row mb-4">
+        <!-- Kits Sent to Site -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Kits Sent to Site</h5>
+                    <p class="card-text display-4">{{ division.kits_sent_to_site }}</p>
+                    <form action="{{ url_for('main.send_kits', division_id=division.id) }}" method="POST" class="mt-3">
+                        {{ kits_form.hidden_tag() }}
+                        <div class="input-group">
+                            {{ kits_form.number_of_kits(class="form-control", placeholder="Enter # of kits") }}
+                            <button type="submit" class="btn btn-primary">Send Kits</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Trains Completed -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Trains Completed</h5>
+                    <p class="card-text display-4">{{ division.trains_completed }}</p>
+                    <form action="{{ url_for('main.complete_trains', division_id=division.id) }}" method="POST" class="mt-3">
+                        {{ trains_form.hidden_tag() }}
+                        <div class="input-group">
+                            {{ trains_form.number_of_trains(class="form-control", placeholder="Enter # of trains") }}
+                            <button type="submit" class="btn btn-success">Mark Completed</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Division Inventory</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Part Number</th>
+                            <th>Part Name</th>
+                            <th class="text-end">Qty per LRV</th>
+                            <th class="text-end">Qty Sent to Site</th>
+                            <th class="text-end">Qty Used on Site</th>
+                            <th class="text-end">Qty Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bom_item, div_inv in parts_with_inventory %}
+                        <tr>
+                            <td>{{ bom_item.part_number }}</td>
+                            <td>{{ bom_item.part_name }}</td>
+                            <td class="text-end">{{ bom_item.qty_per_lrv }}</td>
+                            {% if div_inv %}
+                            <td class="text-end">{{ div_inv.qty_sent_to_site }}</td>
+                            <td class="text-end">{{ div_inv.qty_used_on_site }}</td>
+                            <td class="text-end fw-bold">{{ div_inv.qty_remaining }}</td>
+                            {% else %}
+                            <td class="text-end text-muted">0</td>
+                            <td class="text-end text-muted">0</td>
+                            <td class="text-end text-muted fw-bold">0</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
