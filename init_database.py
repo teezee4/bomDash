@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from datetime import datetime
+from sqlalchemy import inspect, text
 from app import create_app, db
 from app.models import MainBOMStorage, InventoryDivision, DivisionPartInventory
 
@@ -118,6 +119,26 @@ def load_bom_seed_csv():
             db.session.rollback()
             return False
 
+def ensure_inventory_division_columns():
+    """Ensure the inventory_division table has all required columns."""
+    inspector = inspect(db.engine)
+    existing = {col['name'] for col in inspector.get_columns('inventory_division')}
+    required = {
+        'kits_sent_to_site': (
+            "ALTER TABLE inventory_division "
+            "ADD COLUMN IF NOT EXISTS kits_sent_to_site INTEGER NOT NULL DEFAULT 0"
+        ),
+        'trains_completed_count': (
+            "ALTER TABLE inventory_division "
+            "ADD COLUMN IF NOT EXISTS trains_completed_count INTEGER NOT NULL DEFAULT 0"
+        ),
+    }
+    with db.engine.connect() as conn:
+        for col_name, ddl in required.items():
+            if col_name not in existing:
+                conn.execute(text(ddl))
+        conn.commit()
+
 def init_database():
     """Initialize the database and load BOM seed data."""
     app = create_app()
@@ -125,6 +146,7 @@ def init_database():
         try:
             print("Initializing database...")
             db.create_all()
+            ensure_inventory_division_columns()
             print("Database tables created successfully!")
             return load_bom_seed_csv()
 
@@ -138,6 +160,7 @@ def seed_divisions():
     with app.app_context():
         try:
             print("Seeding divisions...")
+            ensure_inventory_division_columns()
             division_names = ['Division 11', 'Division 14', 'Division 16', 'Division 21']
             parts = MainBOMStorage.query.all()
 
