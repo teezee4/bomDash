@@ -1,17 +1,18 @@
-#!/bin/bash
-
 # Render Build Script for BOM Inventory Dashboard
 # This script runs during the build phase on Render
 
 echo "Starting build process..."
+
+# Install Python dependencies
+echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Initialize database first
-echo "Initializing database..."
-python init_database.py
+# Apply database migrations FIRST (before creating tables)
+echo "Applying database migrations..."
+flask db upgrade
 
-# Mark the problematic migration as completed without running it
-echo "Marking migration as completed..."
-flask db stamp f186032c5cc1
+# Load BOM seed data (after schema is ready)
+echo "Loading BOM seed data..."
+python init_database.py
 
 echo "Build completed successfully!"

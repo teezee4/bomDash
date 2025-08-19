@@ -119,18 +119,16 @@ def load_bom_seed_csv():
             return False
 
 def init_database():
-    """Initialize the database and load BOM seed data."""
+    """Load BOM seed data only - no schema creation."""
     app = create_app()
     with app.app_context():
         try:
-            print("Initializing database...")
-            db.create_all()
-            print("Database tables created successfully!")
+            print("Loading BOM seed data...")
+            # REMOVED: db.create_all() - let Flask-Migrate handle schema
             load_bom_seed_csv()
             return True
-
         except Exception as e:
-            print(f"Database initialization error: {e}")
+            print(f"Data loading error: {e}")
             return False
 
 if __name__ == '__main__':
