@@ -13,4 +13,7 @@ pip install -r requirements.txt
 echo "Initializing database..."
 python init_database.py
 
+flask db upgrade
+
+
 echo "Build completed successfully!"
