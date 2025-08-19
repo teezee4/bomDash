@@ -60,6 +60,11 @@ def create_app(config_name: str | None = None):
             db_ok = "disconnected"
         return {"status": "healthy", "database": db_ok}
 
+    @app.context_processor
+    def inject_divisions():
+        from app.models import InventoryDivision
+        return dict(divisions=InventoryDivision.query.all())
+
     return app
 
 # Expose app for Gunicorn

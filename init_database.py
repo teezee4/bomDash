@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from app import create_app, db
-from app.models import MainBOMStorage
+from app.models import MainBOMStorage, InventoryDivision, DivisionPartInventory
 
 def safe_str(val, maxlen):
     """Convert to string and cut to maxlen chars, unless empty/NaN."""
@@ -132,10 +132,53 @@ def init_database():
             print(f"Database initialization error: {e}")
             return False
 
+def seed_divisions():
+    """Seed the database with initial divisions and their part inventories."""
+    app = create_app()
+    with app.app_context():
+        try:
+            print("Seeding divisions...")
+            division_names = ['Division 11', 'Division 14', 'Division 16', 'Division 21']
+            parts = MainBOMStorage.query.all()
+
+            for name in division_names:
+                division = InventoryDivision.query.filter_by(division_name=name).first()
+                if not division:
+                    division = InventoryDivision(division_name=name)
+                    db.session.add(division)
+                    db.session.flush()  # Get the division ID
+                    print(f"Created division: {name}")
+
+                for part in parts:
+                    div_part_inv = DivisionPartInventory.query.filter_by(
+                        part_id=part.id,
+                        division_id=division.id
+                    ).first()
+
+                    if not div_part_inv:
+                        new_div_part = DivisionPartInventory(
+                            part_id=part.id,
+                            division_id=division.id,
+                            qty_sent_to_site=0,
+                            qty_used_on_site=0,
+                            qty_remaining=0
+                        )
+                        db.session.add(new_div_part)
+
+            db.session.commit()
+            print("Divisions and their part inventories seeded successfully!")
+            return True
+        except Exception as e:
+            print(f"Error seeding divisions: {e}")
+            db.session.rollback()
+            return False
+
 if __name__ == '__main__':
     print("BOM Inventory Dashboard - Database Initialization")
     print("=" * 50)
     if init_database():
+        load_bom_seed_csv()
+        seed_divisions()
         print("\n✅ Database is ready!")
         print("You can now start your application with: python app.py")
     else:

@@ -81,3 +81,18 @@ class UpdateInventoryForm(FlaskForm):
                          choices=[('yes', 'Preview Changes Only'), ('no', 'Apply Changes')],
                          default='yes',
                          validators=[DataRequired()])
+
+
+class DivisionKitsForm(FlaskForm):
+    """Form to update kits sent and trains completed for a division"""
+    kits_sent_to_site = IntegerField('Number of Kits Sent to Site', validators=[DataRequired(), NumberRange(min=0)])
+    trains_completed_count = IntegerField('Number of Trains Completed', validators=[DataRequired(), NumberRange(min=0)])
+
+
+class DefectedPartForm(FlaskForm):
+    """Form for reporting defected parts"""
+    part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
+    part_name = StringField('Part Name', validators=[Optional(), Length(max=200)])
+    quantity = FloatField('Quantity', validators=[DataRequired(), NumberRange(min=0.01)])
+    division_id = SelectField('Division', coerce=int, validators=[Optional()])
+    notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])

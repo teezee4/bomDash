@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Stock Overview - BOM Inventory{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-globe-americas"></i> Stock Overview
+        </h1>
+    </div>
+</div>
+
+<!-- Stock Overview Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if stock_data %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Part Name</th>
+                        <th>Main Stock</th>
+                        <th>Total Shipped</th>
+                        {% for division in divisions %}
+                        <th>{{ division.division_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stock_data %}
+                    <tr>
+                        <td>{{ item.part_number }}</td>
+                        <td>{{ item.part_name }}</td>
+                        <td>{{ item.qty_current_stock }}</td>
+                        <td>{{ item.qty_shipped_out }}</td>
+                        {% for qty in item.divisions %}
+                        <td>{{ qty }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No stock data available.</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

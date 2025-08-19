@@ -1,6 +1,6 @@
 from app import db
 from datetime import datetime
-from sqlalchemy import func, Index
+from sqlalchemy import func, Index, UniqueConstraint
 
 class MainBOMStorage(db.Model):
     """Main BOM storage table - core inventory data optimized for PostgreSQL"""
@@ -104,16 +104,63 @@ class InventoryDivision(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     division_name = db.Column(db.String(50), nullable=False, unique=True, index=True)  # e.g., "Division 21"
-    trains_completed = db.Column(db.Integer, nullable=False, default=0)
-    full_installation_kits = db.Column(db.Integer, nullable=False, default=0)
+    kits_sent_to_site = db.Column(db.Integer, nullable=False, default=0)
+    trains_completed_count = db.Column(db.Integer, nullable=False, default=0)
+    notes = db.Column(db.Text)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship to division parts
+    parts = db.relationship('DivisionPartInventory', back_populates='division', cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<InventoryDivision {self.division_name}>'
+
+class DivisionPartInventory(db.Model):
+    """Inventory of parts for each division"""
+    __tablename__ = 'division_part_inventory'
+
+    id = db.Column(db.Integer, primary_key=True)
+    part_id = db.Column(db.Integer, db.ForeignKey('main_bom_storage.id'), nullable=False)
+    division_id = db.Column(db.Integer, db.ForeignKey('inventory_division.id'), nullable=False)
+
+    # Relationships
+    part = db.relationship('MainBOMStorage')
+    division = db.relationship('InventoryDivision', back_populates='parts')
+
+    # Inventory fields
+    qty_sent_to_site = db.Column(db.Float, nullable=False, default=0.0)
+    qty_used_on_site = db.Column(db.Float, nullable=False, default=0.0)
+    qty_remaining = db.Column(db.Float, nullable=False, default=0.0)
     notes = db.Column(db.Text)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    __table_args__ = (UniqueConstraint('part_id', 'division_id', name='_part_division_uc'),)
+
     def __repr__(self):
-        return f'<InventoryDivision {self.division_name}: {self.trains_completed} trains>'
+        return f'<DivisionPartInventory {self.part.part_number} in {self.division.division_name}>'
+
+class DefectedPart(db.Model):
+    """Track defected parts"""
+    __tablename__ = 'defected_parts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    part_number = db.Column(db.String(100), nullable=False, index=True)
+    part_name = db.Column(db.String(200))
+    quantity = db.Column(db.Float, nullable=False)
+    division_id = db.Column(db.Integer, db.ForeignKey('inventory_division.id'), nullable=True)
+    notes = db.Column(db.Text)
+    reported_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    division = db.relationship('InventoryDivision')
+
+    def __repr__(self):
+        return f'<DefectedPart {self.part_number}: {self.quantity}>'
 
 class ToolsDeliveryLog(db.Model):
     """Tools delivery log - separate from materials"""

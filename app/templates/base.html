@@ -56,6 +56,26 @@
                                 <i class="fas fa-calculator me-2"></i>Dynamic Calculator
                             </a>
                         </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-warehouse"></i> Divisions
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                {% for division in divisions %}
+                                    <li><a class="dropdown-item" href="{{ url_for('main.division_inventory', division_id=division.id) }}">{{ division.division_name }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.stock_overview') }}">
+                                <i class="fas fa-globe-americas"></i> Stock Overview
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.defected_parts') }}">
+                                <i class="fas fa-heart-broken"></i> Defected Parts
+                            </a>
+                        </li>
                 </ul>
             </div>
         </div>

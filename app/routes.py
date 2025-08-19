@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app import db
-from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdjustment
-from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm
+from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdjustment, DivisionPartInventory, DefectedPart
+from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm, DivisionKitsForm, DefectedPartForm
 from sqlalchemy import or_
 import json
 from datetime import datetime, date, timedelta
@@ -341,6 +341,12 @@ def export_shipment():
             shipments = json.loads(shipment_data)
             total_shipped = 0
             
+            division = InventoryDivision.query.filter_by(division_name=division_name).first()
+            if not division:
+                division = InventoryDivision(division_name=division_name)
+                db.session.add(division)
+                db.session.flush()  # Get the division ID
+
             # Process each shipment item
             for item in shipments:
                 part_number = item.get('part_number')
@@ -356,17 +362,29 @@ def export_shipment():
                     bom_item.qty_current_stock -= quantity
                     bom_item.qty_shipped_out += quantity
                     bom_item.calculate_lrv_coverage()
+
+                    # Update division part inventory
+                    div_part_inv = DivisionPartInventory.query.filter_by(
+                        part_id=bom_item.id,
+                        division_id=division.id
+                    ).first()
+
+                    if div_part_inv:
+                        div_part_inv.qty_sent_to_site += quantity
+                        div_part_inv.qty_remaining += quantity
+                    else:
+                        div_part_inv = DivisionPartInventory(
+                            part_id=bom_item.id,
+                            division_id=division.id,
+                            qty_sent_to_site=quantity,
+                            qty_remaining=quantity
+                        )
+                        db.session.add(div_part_inv)
+
                     total_shipped += 1
                 else:
                     flash(f'Insufficient stock for part {part_number}', 'warning')
             
-            # Update division inventory if it exists
-            division = InventoryDivision.query.filter_by(division_name=division_name).first()
-            if not division:
-                division = InventoryDivision(division_name=division_name)
-                db.session.add(division)
-            
-            # You might want to add more specific tracking here
             division.updated_at = datetime.utcnow()
             
             db.session.commit()
@@ -383,6 +401,74 @@ def export_shipment():
     divisions = InventoryDivision.query.all()
     
     return render_template('export_shipment.html', parts=all_parts, divisions=divisions)
+
+
+@main.route('/division/<int:division_id>', methods=['GET', 'POST'])
+def division_inventory(division_id):
+    """Display and manage inventory for a specific division"""
+    division = InventoryDivision.query.get_or_404(division_id)
+    form = DivisionKitsForm(obj=division)
+
+    if form.validate_on_submit():
+        new_kits_sent = form.kits_sent_to_site.data
+        new_trains_completed = form.trains_completed_count.data
+
+        # Calculate diffs
+        kits_diff = new_kits_sent - (division.kits_sent_to_site or 0)
+        trains_diff = new_trains_completed - (division.trains_completed_count or 0)
+
+        if kits_diff > 0:
+            # Update qty_sent_to_site for all parts in the division
+            for part_inv in division.parts:
+                qty_to_add = part_inv.part.qty_per_lrv * kits_diff
+                part_inv.qty_sent_to_site += qty_to_add
+                part_inv.qty_remaining += qty_to_add
+
+        if trains_diff > 0:
+            # Update qty_used_on_site for all parts in the division
+            for part_inv in division.parts:
+                qty_to_use = part_inv.part.qty_per_lrv * trains_diff
+                part_inv.qty_used_on_site += qty_to_use
+                part_inv.qty_remaining -= qty_to_use
+
+        # Update division counters
+        division.kits_sent_to_site = new_kits_sent
+        division.trains_completed_count = new_trains_completed
+
+        db.session.commit()
+        flash(f'Inventory for {division.division_name} updated.', 'success')
+        return redirect(url_for('main.division_inventory', division_id=division_id))
+
+    parts_inventory = DivisionPartInventory.query.filter_by(division_id=division_id).all()
+
+    return render_template('division_inventory.html',
+                         division=division,
+                         parts_inventory=parts_inventory,
+                         form=form)
+
+
+@main.route('/defected_parts', methods=['GET', 'POST'])
+def defected_parts():
+    """Report and view defected parts"""
+    form = DefectedPartForm()
+    form.division_id.choices = [(d.id, d.division_name) for d in InventoryDivision.query.all()]
+    form.division_id.choices.insert(0, ('', 'N/A'))
+
+    if form.validate_on_submit():
+        delected_part = DefectedPart(
+            part_number=form.part_number.data,
+            part_name=form.part_name.data,
+            quantity=form.quantity.data,
+            division_id=form.division_id.data if form.division_id.data else None,
+            notes=form.notes.data
+        )
+        db.session.add(delected_part)
+        db.session.commit()
+        flash('Defected part reported successfully.', 'success')
+        return redirect(url_for('main.defected_parts'))
+
+    defected_parts_list = DefectedPart.query.order_by(DefectedPart.reported_at.desc()).all()
+    return render_template('delected_parts.html', form=form, defected_parts=defected_parts_list)
 
 
 @main.route('/inventory_report')
@@ -457,3 +543,35 @@ def dynamic_calculator():
         current_app.logger.error(f'Error in dynamic_calculator: {str(e)}')
         flash('Error loading dynamic calculator. Please try again.', 'error')
         return redirect(url_for('main.dashboard'))
+
+
+@main.route('/stock_overview')
+def stock_overview():
+    """Display stock overview across all locations"""
+    parts = MainBOMStorage.query.order_by(MainBOMStorage.part_number).all()
+    divisions = InventoryDivision.query.order_by(InventoryDivision.division_name).all()
+
+    stock_data = []
+    for part in parts:
+        part_data = {
+            'part_number': part.part_number,
+            'part_name': part.part_name,
+            'qty_current_stock': part.qty_current_stock,
+            'qty_shipped_out': part.qty_shipped_out,
+            'divisions': []
+        }
+        for division in divisions:
+            div_part_inv = DivisionPartInventory.query.filter_by(
+                part_id=part.id,
+                division_id=division.id
+            ).first()
+
+            if div_part_inv:
+                part_data['divisions'].append(div_part_inv.qty_remaining)
+            else:
+                part_data['divisions'].append(0)
+        stock_data.append(part_data)
+
+    return render_template('stock_overview.html',
+                         stock_data=stock_data,
+                         divisions=divisions)

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Defected Parts - BOM Inventory{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-heart-broken"></i> Defected Parts
+        </h1>
+    </div>
+</div>
+
+<!-- Report Defected Part Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        Report a Defected Part
+    </div>
+    <div class="card-body">
+        <form method="POST" class="row g-3">
+            {{ form.hidden_tag() }}
+            <div class="col-md-4">
+                {{ form.part_number.label(class="form-label") }}
+                {{ form.part_number(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                {{ form.part_name.label(class="form-label") }}
+                {{ form.part_name(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                {{ form.quantity.label(class="form-label") }}
+                {{ form.quantity(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.division_id.label(class="form-label") }}
+                {{ form.division_id(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.notes.label(class="form-label") }}
+                {{ form.notes(class="form-control", rows=3) }}
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-bug"></i> Report Defect
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Defected Parts Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if defected_parts %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Part Name</th>
+                        <th>Quantity</th>
+                        <th>Division</th>
+                        <th>Notes</th>
+                        <th>Reported At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in defected_parts %}
+                    <tr>
+                        <td>{{ item.part_number }}</td>
+                        <td>{{ item.part_name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.division.division_name if item.division else 'N/A' }}</td>
+                        <td>{{ item.notes }}</td>
+                        <td>{{ item.reported_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No defected parts reported yet.</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
