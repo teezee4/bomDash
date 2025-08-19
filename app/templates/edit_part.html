@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Edit Part - BOM Inventory{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">
+                    <i class="fas fa-pencil-alt"></i> Edit Part: {{ part.part_number }}
+                </h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.edit_part', part_id=part.id) }}" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="part_number" class="form-label">Part Number</label>
+                            {{ form.part_number(class="form-control", readonly=true) }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="part_name" class="form-label">Part Name</label>
+                            {{ form.part_name(class="form-control") }}
+                        </div>
+                        <div class="col-12">
+                            <label for="description" class="form-label">Description</label>
+                            {{ form.description(class="form-control", rows=3) }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="supplier" class="form-label">Supplier</label>
+                            {{ form.supplier(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="component" class="form-label">Component</label>
+                            {{ form.component(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="qty_per_lrv" class="form-label">Quantity per LRV</label>
+                            {{ form.qty_per_lrv(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="qty_current_stock" class="form-label">Current Stock</label>
+                            {{ form.qty_current_stock(class="form-control") }}
+                        </div>
+                         <div class="col-md-6">
+                            <label for="back_order_qty" class="form-label">Back Ordered Qty</label>
+                            {{ form.back_order_qty(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="consumable_or_essential" class="form-label">Type</label>
+                            {{ form.consumable_or_essential(class="form-select") }}
+                        </div>
+                        <div class="col-12">
+                            <label for="notes" class="form-label">Notes</label>
+                            {{ form.notes(class="form-control", rows=4) }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end">
+                        <a href="{{ url_for('main.parts_list') }}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

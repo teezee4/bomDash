@@ -30,29 +30,37 @@
                 <thead class="table-dark">
                     <tr>
                         <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
-                        <th class="border border-secondary px-3 py-3 text-center">Description</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Component Name</th>
                         <th class="border border-secondary px-3 py-3 text-center">Qty per LRV</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
                         <th class="border border-secondary px-3 py-3 text-center">Number of Cars</th>
                         <th class="border border-secondary px-3 py-3 text-center">Qty Required</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Additional Qty Required</th>
                     </tr>
                 </thead>
                 <tbody id="calculator_table_body">
                     {% for part in parts %}
-                    <tr data-qty-per-lrv="{{ part.qty_per_lrv }}">
+                    <tr data-qty-per-lrv="{{ part.qty_per_lrv }}" data-current-stock="{{ part.qty_current_stock or 0 }}">
                         <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <strong class="text-primary">{{ part.part_number }}</strong>
                         </td>
                         <td class="border border-secondary px-3 py-2 align-middle">
-                            <div class="fw-medium">{{ part.part_name or '-' }}</div>
+                            <div class="fw-medium">{{ part.component or '-' }}</div>
                         </td>
                         <td class="border border-secondary px-3 py-2 text-center align-middle">
                             <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
                         </td>
                         <td class="border border-secondary px-3 py-2 text-center align-middle">
-                            <input type="number" class="form-control per-row-cars" min="0" value="1">
+                            <span class="fw-medium">{{ part.qty_current_stock or 0 }}</span>
                         </td>
                         <td class="border border-secondary px-3 py-2 text-center align-middle">
-                            <span class="fw-bold fs-5 text-success qty-required">{{ part.qty_per_lrv or 0 }}</span>
+                            <input type="number" class="form-control per-row-cars" min="0" value="1" style="width: 80px; margin: auto;">
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 text-info qty-required">{{ part.qty_per_lrv or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 text-danger additional-qty-required">0</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -69,24 +77,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const globalCarsNeededInput = document.getElementById('global_cars_needed');
     const tableBody = document.getElementById('calculator_table_body');
 
+    function calculateRow(row, globalCars = null) {
+        const perRowInput = row.querySelector('.per-row-cars');
+        const cars = globalCars !== null ? globalCars : (parseInt(perRowInput.value, 10) || 0);
+
+        if (globalCars !== null) {
+            perRowInput.value = globalCars;
+        }
+
+        const qtyPerLrv = parseFloat(row.dataset.qtyPerLrv) || 0;
+        const currentStock = parseFloat(row.dataset.currentStock) || 0;
+
+        const qtyRequired = cars * qtyPerLrv;
+        const additionalQtyRequired = Math.max(0, qtyRequired - currentStock);
+
+        const qtyRequiredSpan = row.querySelector('.qty-required');
+        const additionalQtyRequiredSpan = row.querySelector('.additional-qty-required');
+
+        qtyRequiredSpan.textContent = qtyRequired.toFixed(0);
+        additionalQtyRequiredSpan.textContent = additionalQtyRequired.toFixed(0);
+
+        // Style based on shortage
+        if (additionalQtyRequired > 0) {
+            additionalQtyRequiredSpan.classList.add('text-danger');
+            additionalQtyRequiredSpan.classList.remove('text-success');
+        } else {
+            additionalQtyRequiredSpan.classList.add('text-success');
+            additionalQtyRequiredSpan.classList.remove('text-danger');
+        }
+    }
+
     function calculateAll() {
         const globalCars = parseInt(globalCarsNeededInput.value, 10) || 0;
         const rows = tableBody.getElementsByTagName('tr');
         for (let row of rows) {
-            const perRowInput = row.querySelector('.per-row-cars');
-            perRowInput.value = globalCars;
-            const qtyPerLrv = parseFloat(row.dataset.qtyPerLrv) || 0;
-            const qtyRequiredSpan = row.querySelector('.qty-required');
-            qtyRequiredSpan.textContent = (globalCars * qtyPerLrv).toFixed(2);
+            calculateRow(row, globalCars);
         }
-    }
-
-    function calculateRow(row) {
-        const perRowInput = row.querySelector('.per-row-cars');
-        const cars = parseInt(perRowInput.value, 10) || 0;
-        const qtyPerLrv = parseFloat(row.dataset.qtyPerLrv) || 0;
-        const qtyRequiredSpan = row.querySelector('.qty-required');
-        qtyRequiredSpan.textContent = (cars * qtyPerLrv).toFixed(2);
     }
 
     globalCarsNeededInput.addEventListener('input', calculateAll);
@@ -98,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Initial calculation
+    // Initial calculation for all rows
     calculateAll();
 });
 </script>
