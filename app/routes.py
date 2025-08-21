@@ -1,14 +1,59 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app import db
 from app.models import MainBOMStorage, DeliveryLog, InventoryDivision, StockAdjustment, DivisionInventory, DefectedPart
-from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm, DivisionForm, KitsSentForm, TrainsCompletedForm, DefectedPartForm
+from app.forms import DeliveryForm, StockAdjustmentForm, BOMItemForm, SearchForm, TrainCalculatorForm, DivisionForm, KitsSentForm, TrainsCompletedForm, DefectedPartForm, LoginForm
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 import json
 from datetime import datetime, date, timedelta
 
 
+from functools import wraps
 main = Blueprint('main', __name__)
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'admin':
+            flash('You do not have permission to access this page.', 'error')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if request.method == 'POST':
+        role = request.form.get('submit_button')
+        if role == 'viewer':
+            session['role'] = 'viewer'
+            flash('Viewer login successful!', 'success')
+            return redirect(url_for('main.dashboard'))
+
+        if form.validate_on_submit():
+            if role == 'admin':
+                # Hardcoded password check
+                if form.password.data == 'sga2':
+                    session['role'] = 'admin'
+                    flash('Admin login successful!', 'success')
+                    return redirect(url_for('main.dashboard'))
+                else:
+                    flash('Invalid password for admin login.', 'error')
+                    return redirect(url_for('main.login'))
+    return render_template('login.html', form=form)
+
+@main.route('/logout')
+def logout():
+    session.pop('role', None)
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('main.login'))
+
+
+@main.before_request
+def require_login():
+    # Allow access to login page and static files without being logged in
+    if 'role' not in session and request.endpoint not in ['main.login', 'static']:
+        return redirect(url_for('main.login'))
 
 
 @main.route('/')
@@ -129,6 +174,9 @@ def delivery_log():
     form = DeliveryForm()
     
     if form.validate_on_submit():
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.delivery_log'))
         # Create new delivery log entry
         delivery = DeliveryLog(
             part_number=form.part_number.data,
@@ -167,6 +215,9 @@ def stock_adjustment():
     form = StockAdjustmentForm()
     
     if form.validate_on_submit():
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.stock_adjustment'))
         # Find the BOM item
         bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
         if not bom_item:
@@ -277,6 +328,9 @@ def edit_part(part_id):
     form = BOMItemForm(obj=bom_item)
     
     if form.validate_on_submit():
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.edit_part', part_id=part_id))
         # Update all the fields
         form.populate_obj(bom_item)
         
@@ -293,6 +347,7 @@ def edit_part(part_id):
 
 
 @main.route('/add_part', methods=['GET', 'POST'])
+@admin_required
 def add_part():
     """Add a new BOM item"""
     form = BOMItemForm()
@@ -335,6 +390,9 @@ def add_part():
 def export_shipment():
     """Export/ship parts to divisions and deduct from stock"""
     if request.method == 'POST':
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.export_shipment'))
         division_name = request.form.get('division_name')
         shipment_data = request.form.get('shipment_data')  # JSON data of parts and quantities
         
@@ -465,6 +523,9 @@ def list_divisions():
     """List all inventory divisions and allow creating new ones"""
     form = DivisionForm()
     if form.validate_on_submit():
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.list_divisions'))
         # Check if division name already exists
         existing_division = InventoryDivision.query.filter_by(division_name=form.division_name.data).first()
         if existing_division:
@@ -510,6 +571,7 @@ def view_division(division_id):
 
 
 @main.route('/division/<int:division_id>/send_kits', methods=['POST'])
+@admin_required
 def send_kits(division_id):
     """Handle the logic for sending kits to a division"""
     division = InventoryDivision.query.get_or_404(division_id)
@@ -580,6 +642,9 @@ def defected_parts():
     form.division_id.choices.insert(0, ('', 'N/A - Main Stock or Unspecified'))
 
     if form.validate_on_submit():
+        if session.get('role') != 'admin':
+            flash('You do not have permission to perform this action.', 'error')
+            return redirect(url_for('main.defected_parts'))
         # Find the corresponding BOM item to ensure part number is valid
         bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
         if not bom_item:
@@ -649,6 +714,7 @@ def stock_overview():
 
 
 @main.route('/division/<int:division_id>/complete_trains', methods=['POST'])
+@admin_required
 def complete_trains(division_id):
     """Handle the logic for completing trains for a division"""
     division = InventoryDivision.query.get_or_404(division_id)

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="text-center">Login</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.login') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control", size=32) }}
+                        {% for error in form.password.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="submit_button" value="admin" class="btn btn-primary">Admin Login</button>
+                        <button type="submit" name="submit_button" value="viewer" class="btn btn-secondary">Viewer Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

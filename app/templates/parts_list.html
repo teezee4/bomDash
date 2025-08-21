@@ -144,6 +144,7 @@
                                         title="View Details">
                                     <i class="fas fa-eye"></i> View
                                 </button>
+                                {% if session.get('role') == 'admin' %}
                                 <a href="{{ url_for('main.delivery_log') }}?part_number={{ part.part_number }}"
                                    class="btn btn-outline-success btn-sm" title="Add Delivery">
                                     <i class="fas fa-plus"></i> Add
@@ -156,6 +157,7 @@
                                    class="btn btn-outline-info btn-sm" title="Edit Part">
                                     <i class="fas fa-pencil-alt"></i> Edit
                                 </a>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
