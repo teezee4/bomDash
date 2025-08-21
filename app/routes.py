@@ -20,27 +20,30 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@main.route('/login', methods=['GET', 'POST'])
+@main.route('/login')
 def login():
-    form = LoginForm()
-    if request.method == 'POST':
-        role = request.form.get('submit_button')
-        if role == 'viewer':
-            session['role'] = 'viewer'
-            flash('Viewer login successful!', 'success')
-            return redirect(url_for('main.dashboard'))
+    return render_template('auth/landing.html')
 
-        if form.validate_on_submit():
-            if role == 'admin':
-                # Hardcoded password check
-                if form.password.data == 'sga2':
-                    session['role'] = 'admin'
-                    flash('Admin login successful!', 'success')
-                    return redirect(url_for('main.dashboard'))
-                else:
-                    flash('Invalid password for admin login.', 'error')
-                    return redirect(url_for('main.login'))
-    return render_template('login.html', form=form)
+
+@main.route('/login_viewer')
+def login_viewer():
+    session['role'] = 'viewer'
+    flash('Viewer login successful!', 'success')
+    return redirect(url_for('main.dashboard'))
+
+
+@main.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        if form.password.data == 'sga2':
+            session['role'] = 'admin'
+            flash('Admin login successful!', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            flash('Invalid password for admin login.', 'error')
+            return redirect(url_for('main.admin_login'))
+    return render_template('auth/admin_login.html', form=form)
 
 @main.route('/logout')
 def logout():
@@ -51,8 +54,9 @@ def logout():
 
 @main.before_request
 def require_login():
-    # Allow access to login page and static files without being logged in
-    if 'role' not in session and request.endpoint not in ['main.login', 'static']:
+    # Allow access to login pages and static files without being logged in
+    allowed_endpoints = ['main.login', 'main.admin_login', 'main.login_viewer', 'static']
+    if 'role' not in session and request.endpoint not in allowed_endpoints:
         return redirect(url_for('main.login'))
 
 
@@ -169,14 +173,12 @@ def parts_list():
 
 
 @main.route('/delivery_log', methods=['GET', 'POST'])
+@admin_required
 def delivery_log():
     """Log new deliveries and view delivery history"""
     form = DeliveryForm()
     
     if form.validate_on_submit():
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.delivery_log'))
         # Create new delivery log entry
         delivery = DeliveryLog(
             part_number=form.part_number.data,
@@ -210,14 +212,12 @@ def delivery_log():
 
 
 @main.route('/stock_adjustment', methods=['GET', 'POST'])
+@admin_required
 def stock_adjustment():
     """Manual stock adjustments"""
     form = StockAdjustmentForm()
     
     if form.validate_on_submit():
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.stock_adjustment'))
         # Find the BOM item
         bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
         if not bom_item:
@@ -322,15 +322,13 @@ def part_autocomplete():
 
 
 @main.route('/edit_part/<int:part_id>', methods=['GET', 'POST'])
+@admin_required
 def edit_part(part_id):
     """Edit a specific BOM item"""
     bom_item = MainBOMStorage.query.get_or_404(part_id)
     form = BOMItemForm(obj=bom_item)
     
     if form.validate_on_submit():
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.edit_part', part_id=part_id))
         # Update all the fields
         form.populate_obj(bom_item)
         
@@ -387,12 +385,10 @@ def add_part():
 
 
 @main.route('/export_shipment', methods=['GET', 'POST'])
+@admin_required
 def export_shipment():
     """Export/ship parts to divisions and deduct from stock"""
     if request.method == 'POST':
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.export_shipment'))
         division_name = request.form.get('division_name')
         shipment_data = request.form.get('shipment_data')  # JSON data of parts and quantities
         
@@ -519,13 +515,11 @@ def dynamic_calculator():
 
 
 @main.route('/divisions', methods=['GET', 'POST'])
+@admin_required
 def list_divisions():
     """List all inventory divisions and allow creating new ones"""
     form = DivisionForm()
     if form.validate_on_submit():
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.list_divisions'))
         # Check if division name already exists
         existing_division = InventoryDivision.query.filter_by(division_name=form.division_name.data).first()
         if existing_division:
@@ -634,6 +628,7 @@ def send_kits(division_id):
 
 
 @main.route('/defected_parts', methods=['GET', 'POST'])
+@admin_required
 def defected_parts():
     """Log and view defected parts"""
     form = DefectedPartForm()
@@ -642,9 +637,6 @@ def defected_parts():
     form.division_id.choices.insert(0, ('', 'N/A - Main Stock or Unspecified'))
 
     if form.validate_on_submit():
-        if session.get('role') != 'admin':
-            flash('You do not have permission to perform this action.', 'error')
-            return redirect(url_for('main.defected_parts'))
         # Find the corresponding BOM item to ensure part number is valid
         bom_item = MainBOMStorage.query.filter_by(part_number=form.part_number.data).first()
         if not bom_item:
