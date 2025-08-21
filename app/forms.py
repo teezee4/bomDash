@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, TextAreaField, SelectField, DateField, IntegerField
+from wtforms import StringField, FloatField, TextAreaField, SelectField, DateField, IntegerField, PasswordField
 from wtforms.validators import DataRequired, NumberRange, Length, Optional
 from datetime import datetime
 
@@ -107,3 +107,8 @@ class DefectedPartForm(FlaskForm):
     quantity = FloatField('Quantity', validators=[DataRequired(), NumberRange(min=0.01)])
     division_id = SelectField('Source Division (Optional)', coerce=int, validators=[Optional()])
     notes = TextAreaField('Notes/Reason for Defect', validators=[DataRequired(), Length(max=500)])
+
+
+class LoginForm(FlaskForm):
+    """Form for user login"""
+    password = PasswordField('Password', validators=[DataRequired()])
