@@ -333,20 +333,14 @@ def edit_part(part_id):
     return render_template('edit_part.html', form=form, part=bom_item)
 
 @main.route('/delete_part/<int:part_id>', methods=['POST'])
-@admin_required
 def delete_part(part_id):
-    """Delete a specific BOM item and its related division inventory."""
+    """Delete a specific BOM item"""
     bom_item = MainBOMStorage.query.get_or_404(part_id)
     
     try:
-        # Before deleting the part, delete its inventory records from all divisions
-        DivisionInventory.query.filter_by(part_id=part_id).delete()
-
-        # Now, delete the part itself
         db.session.delete(bom_item)
         db.session.commit()
-
-        flash(f'Part {bom_item.part_number} and all its division inventory records have been permanently deleted.', 'success')
+        flash(f'Part {bom_item.part_number} has been permanently deleted.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting part {bom_item.part_number}: {str(e)}', 'error')
@@ -508,18 +502,6 @@ def dashboard_data():
         'out_of_stock_parts': out_of_stock_parts,
         'total_stock_items': int(total_stock_items)
     })
-
-@main.route('/split_parts_list')
-def split_parts_list():
-    """Display parts list split into Essential and Consumables"""
-    try:
-        essentials = MainBOMStorage.query.filter_by(consumable_or_essential='Essential').order_by(MainBOMStorage.part_number).all()
-        consumables = MainBOMStorage.query.filter_by(consumable_or_essential='Consumables').order_by(MainBOMStorage.part_number).all()
-        return render_template('split_parts_list.html', essentials=essentials, consumables=consumables)
-    except Exception as e:
-        current_app.logger.error(f'Error in split_parts_list: {str(e)}')
-        flash('Error loading split parts list. Please try again.', 'error')
-        return redirect(url_for('main.dashboard'))
 
 @main.route('/dynamic_calculator')
 def dynamic_calculator():
