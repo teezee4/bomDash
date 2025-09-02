@@ -333,14 +333,20 @@ def edit_part(part_id):
     return render_template('edit_part.html', form=form, part=bom_item)
 
 @main.route('/delete_part/<int:part_id>', methods=['POST'])
+@admin_required
 def delete_part(part_id):
-    """Delete a specific BOM item"""
+    """Delete a specific BOM item and its related division inventory."""
     bom_item = MainBOMStorage.query.get_or_404(part_id)
     
     try:
+        # Before deleting the part, delete its inventory records from all divisions
+        DivisionInventory.query.filter_by(part_id=part_id).delete()
+
+        # Now, delete the part itself
         db.session.delete(bom_item)
         db.session.commit()
-        flash(f'Part {bom_item.part_number} has been permanently deleted.', 'success')
+
+        flash(f'Part {bom_item.part_number} and all its division inventory records have been permanently deleted.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting part {bom_item.part_number}: {str(e)}', 'error')
