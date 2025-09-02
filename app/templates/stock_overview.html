@@ -35,7 +35,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th rowspan="2" class="align-middle">Part Number</th>
-                            <th rowspan="2" class="align-middle">Part Name</th>
+                            <th rowspan="2" class="align-middle">Component Name</th>
                             <th colspan="3" class="text-center">Main Storage</th>
                             {% if divisions %}
                             <th colspan="{{ divisions|length }}" class="text-center">On-Site Stock (Remaining)</th>
@@ -54,7 +54,7 @@
                         {% for data in stock_data %}
                         <tr>
                             <td>{{ data.part.part_number }}</td>
-                            <td>{{ data.part.part_name }}</td>
+                            <td>{{ data.part.component }}</td>
                             <td class="text-end">{{ data.part.qty_on_site }}</td>
                             <td class="text-end fw-bold">{{ data.part.qty_current_stock }}</td>
                             <td class="text-end">{{ data.part.qty_shipped_out }}</td>
