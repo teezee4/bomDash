@@ -424,8 +424,8 @@ def export_shipment():
                 bom_item = MainBOMStorage.query.filter_by(part_number=part_number).first()
                 if bom_item and bom_item.qty_current_stock >= quantity:
                     # Deduct from current stock
-                    bom_item.qty_current_stock -= quantity
-                    bom_item.qty_shipped_out += quantity
+                    bom_item.qty_current_stock = (bom_item.qty_current_stock or 0) - quantity
+                    bom_item.qty_shipped_out = (bom_item.qty_shipped_out or 0) + quantity
                     bom_item.calculate_lrv_coverage()
                     total_shipped += 1
                 else:
