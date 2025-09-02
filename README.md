@@ -22,3 +22,4 @@ This is an inventory management system used by Siemens to keep track of parts an
 - **Database:** PostgreSQL
 - **Frontend:** HTML, CSS (with a templating engine, likely Jinja2)
 - **Deployment:** Gunicorn
+<img width="1336" height="304" alt="image" src="https://github.com/user-attachments/assets/b6c76d31-c6d4-41c0-9cb5-4f1c72335d35" />
