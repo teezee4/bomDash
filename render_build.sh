@@ -53,7 +53,7 @@ with app.app_context():
 "
 
 # Load BOM seed data (after schema is ready)
-echo "Loading BOM seed data..."
-python init_database.py
+#echo "Loading BOM seed data..."
+#python init_database.py
 
 echo "Build completed successfully!"
