@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Dynamic Calculator - BOM Inventory{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-calculator"></i> Dynamic 'Cars Needed' Calculator
+        </h1>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Global Calculator</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="global_cars_needed" class="form-label">Number of Cars</label>
+                <input type="number" class="form-control" id="global_cars_needed" min="0" value="1">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="border border-secondary px-3 py-3 text-center">Part Number</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Component Name</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty per LRV</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Current Stock</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Number of Cars</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Qty Required</th>
+                        <th class="border border-secondary px-3 py-3 text-center">Additional Qty Required</th>
+                    </tr>
+                </thead>
+                <tbody id="calculator_table_body">
+                    {% for part in parts %}
+                    <tr data-qty-per-lrv="{{ part.qty_per_lrv }}" data-current-stock="{{ part.qty_current_stock or 0 }}">
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <strong class="text-primary">{{ part.part_number }}</strong>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 align-middle">
+                            <div class="fw-medium">{{ part.component or '-' }}</div>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium">{{ part.qty_per_lrv or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-medium">{{ part.qty_current_stock or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <input type="number" class="form-control per-row-cars" min="0" value="1" style="width: 80px; margin: auto;">
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 text-info qty-required">{{ part.qty_per_lrv or 0 }}</span>
+                        </td>
+                        <td class="border border-secondary px-3 py-2 text-center align-middle">
+                            <span class="fw-bold fs-5 text-danger additional-qty-required">0</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const globalCarsNeededInput = document.getElementById('global_cars_needed');
+    const tableBody = document.getElementById('calculator_table_body');
+
+    function calculateRow(row, globalCars = null) {
+        const perRowInput = row.querySelector('.per-row-cars');
+        const cars = globalCars !== null ? globalCars : (parseInt(perRowInput.value, 10) || 0);
+
+        if (globalCars !== null) {
+            perRowInput.value = globalCars;
+        }
+
+        const qtyPerLrv = parseFloat(row.dataset.qtyPerLrv) || 0;
+        const currentStock = parseFloat(row.dataset.currentStock) || 0;
+
+        const qtyRequired = cars * qtyPerLrv;
+        const additionalQtyRequired = Math.max(0, qtyRequired - currentStock);
+
+        const qtyRequiredSpan = row.querySelector('.qty-required');
+        const additionalQtyRequiredSpan = row.querySelector('.additional-qty-required');
+
+        qtyRequiredSpan.textContent = qtyRequired.toFixed(0);
+        additionalQtyRequiredSpan.textContent = additionalQtyRequired.toFixed(0);
+
+        // Style based on shortage
+        if (additionalQtyRequired > 0) {
+            additionalQtyRequiredSpan.classList.add('text-danger');
+            additionalQtyRequiredSpan.classList.remove('text-success');
+        } else {
+            additionalQtyRequiredSpan.classList.add('text-success');
+            additionalQtyRequiredSpan.classList.remove('text-danger');
+        }
+    }
+
+    function calculateAll() {
+        const globalCars = parseInt(globalCarsNeededInput.value, 10) || 0;
+        const rows = tableBody.getElementsByTagName('tr');
+        for (let row of rows) {
+            calculateRow(row, globalCars);
+        }
+    }
+
+    globalCarsNeededInput.addEventListener('input', calculateAll);
+
+    tableBody.addEventListener('input', function(event) {
+        if (event.target.classList.contains('per-row-cars')) {
+            const row = event.target.closest('tr');
+            calculateRow(row);
+        }
+    });
+
+    // Initial calculation for all rows
+    calculateAll();
+});
+</script>
+{% endblock %}

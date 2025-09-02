@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, TextAreaField, SelectField, DateField, IntegerField
+from wtforms import StringField, FloatField, TextAreaField, SelectField, DateField, IntegerField, PasswordField
 from wtforms.validators import DataRequired, NumberRange, Length, Optional
 from datetime import datetime
 
@@ -36,26 +36,26 @@ class StockAdjustmentForm(FlaskForm):
 
 
 class BOMItemForm(FlaskForm):
-    """Form for editing BOM items - updated to match new schema"""
+    """Form for editing BOM items"""
     part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
     part_name = StringField('Part Name', validators=[DataRequired(), Length(max=200)])
     description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
     supplier = StringField('Supplier', validators=[DataRequired(), Length(max=100)])
-    type = StringField('Type', validators=[Optional(), Length(max=100)])
-    
-    # Updated field names to match database schema
-    qty_needed_per_lrv = FloatField('Quantity per LRV', validators=[DataRequired(), NumberRange(min=0)])
-    total_quantity_received_by_store = FloatField('Total Quantity Received', validators=[NumberRange(min=0)], default=0.0)
-    quantity_currently_in_stock_at_store = FloatField('Current Stock', validators=[NumberRange(min=0)], default=0.0)
-    quantity_back_ordered = FloatField('Back Ordered Quantity', validators=[NumberRange(min=0)], default=0.0)
-    
+    component = StringField('Component', validators=[Optional(), Length(max=100)])
+    qty_per_lrv = FloatField('Quantity per LRV', validators=[DataRequired(), NumberRange(min=0)])
+    qty_on_site = FloatField('Quantity On Site', validators=[NumberRange(min=0)], default=0.0)
+    qty_current_stock = FloatField('Current Stock', validators=[NumberRange(min=0)], default=0.0)
+    back_order_qty = FloatField('Back Ordered Quantity', validators=[NumberRange(min=0)], default=0.0)
+    consumable_or_essential = SelectField('Type',
+                                        choices=[('Essential', 'Essential'), ('Consumables', 'Consumables')],
+                                        validators=[Optional()])
     notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
 
 
 class SearchForm(FlaskForm):
     """Search form for parts list"""
     search_term = StringField('Search Parts', validators=[Optional(), Length(max=100)])
-    description_filter = StringField('Filter by Description', validators=[Optional(), Length(max=100)])
+    description_filter = SelectField('Filter by Description', validators=[Optional()], choices=[])
     type_filter = SelectField('Filter by Type', 
                             choices=[('', 'All Types'), 
                                    ('Long Lead', 'Long Lead'), 
@@ -81,3 +81,34 @@ class UpdateInventoryForm(FlaskForm):
                          choices=[('yes', 'Preview Changes Only'), ('no', 'Apply Changes')],
                          default='yes',
                          validators=[DataRequired()])
+
+
+class DivisionForm(FlaskForm):
+    """Form for creating and editing divisions"""
+    division_name = StringField('Division Name', validators=[DataRequired(), Length(max=50)])
+    location = StringField('Location', validators=[Optional(), Length(max=100)])
+    notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
+
+
+class KitsSentForm(FlaskForm):
+    """Form for sending kits to a division"""
+    number_of_kits = IntegerField('Number of Kits to Send', validators=[DataRequired(), NumberRange(min=1)])
+
+
+class TrainsCompletedForm(FlaskForm):
+    """Form for marking trains as completed for a division"""
+    number_of_trains = IntegerField('Number of Trains Completed', validators=[DataRequired(), NumberRange(min=1)])
+
+
+class DefectedPartForm(FlaskForm):
+    """Form for logging defected parts"""
+    part_number = StringField('Part Number', validators=[DataRequired(), Length(max=100)])
+    part_name = StringField('Part Name', validators=[DataRequired(), Length(max=200)])
+    quantity = FloatField('Quantity', validators=[DataRequired(), NumberRange(min=0.01)])
+    division_id = SelectField('Source Division (Optional)', coerce=int, validators=[Optional()])
+    notes = TextAreaField('Notes/Reason for Defect', validators=[DataRequired(), Length(max=500)])
+
+
+class LoginForm(FlaskForm):
+    """Form for user login"""
+    password = PasswordField('Password', validators=[DataRequired()])

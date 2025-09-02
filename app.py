@@ -1,12 +1,14 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from flask_migrate import Migrate
 import os
 from config import config
 
 # Extensions
 db = SQLAlchemy()
 csrf = CSRFProtect()
+migrate = Migrate()
 
 def _normalize_db_url(url: str | None) -> str | None:
     if not url:
@@ -35,6 +37,7 @@ def create_app(config_name: str | None = None):
     # Init extensions
     db.init_app(app)
     csrf.init_app(app)
+    migrate.init_app(app, db)
 
     # Register blueprints
     from app.routes import main
@@ -42,13 +45,6 @@ def create_app(config_name: str | None = None):
 
     # Import models after db is ready
     from app import models  # noqa: F401
-
-    # Create tables in dev/local or first boot. In production later, switch to migrations.
-    with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            print(f"db.create_all() skipped/failed: {e}")
 
     @app.get("/health")
     def health():

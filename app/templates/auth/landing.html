@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card text-center">
+            <div class="card-header">
+                <h3 class="text-center">Choose Your Role</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Please select how you would like to access the dashboard.</p>
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('main.admin_login') }}" class="btn btn-primary btn-lg">Admin Login</a>
+                    <a href="{{ url_for('main.login_viewer') }}" class="btn btn-secondary btn-lg">Viewer Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

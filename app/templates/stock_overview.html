@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Overview - BOM Inventory{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-warehouse me-2"></i>Stock Overview</h1>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.stock_overview') }}">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="search" placeholder="Search by Part Number or Name..." value="{{ search_term or '' }}">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Search</button>
+                    {% if search_term %}
+                    <a href="{{ url_for('main.stock_overview') }}" class="btn btn-secondary">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stock Table -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Consolidated Stock Levels</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th rowspan="2" class="align-middle">Part Number</th>
+                            <th rowspan="2" class="align-middle">Component Name</th>
+                            <th colspan="3" class="text-center">Main Storage</th>
+                            {% if divisions %}
+                            <th colspan="{{ divisions|length }}" class="text-center">On-Site Stock (Remaining)</th>
+                            {% endif %}
+                        </tr>
+                        <tr>
+                            <th class="text-end">Qty Received</th>
+                            <th class="text-end">In Stock</th>
+                            <th class="text-end">Shipped Out</th>
+                            {% for division in divisions %}
+                            <th class="text-end">{{ division.division_name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in stock_data %}
+                        <tr>
+                            <td>{{ data.part.part_number }}</td>
+                            <td>{{ data.part.component }}</td>
+                            <td class="text-end">{{ data.part.qty_on_site }}</td>
+                            <td class="text-end fw-bold">{{ data.part.qty_current_stock }}</td>
+                            <td class="text-end">{{ data.part.qty_shipped_out }}</td>
+                            {% for stock_level in data.division_stock %}
+                            <td class="text-end">{{ stock_level }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 5 + (divisions|length) }}" class="text-center">No parts found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
