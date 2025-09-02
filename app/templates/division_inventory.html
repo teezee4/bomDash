@@ -62,7 +62,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Part Number</th>
-                            <th>Part Name</th>
+                            <th>Component Name</th>
                             <th class="text-end">Qty per LRV</th>
                             <th class="text-end">Qty Sent to Site</th>
                             <th class="text-end">Qty Used on Site</th>
@@ -73,7 +73,7 @@
                         {% for bom_item, div_inv in parts_with_inventory %}
                         <tr>
                             <td>{{ bom_item.part_number }}</td>
-                            <td>{{ bom_item.part_name }}</td>
+                            <td>{{ bom_item.component }}</td>
                             <td class="text-end">{{ bom_item.qty_per_lrv }}</td>
                             {% if div_inv %}
                             <td class="text-end">{{ div_inv.qty_sent_to_site }}</td>
