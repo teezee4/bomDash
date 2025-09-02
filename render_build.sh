@@ -52,8 +52,8 @@ with app.app_context():
                     print(f'❌ Failed to add location column: {e3}')
 "
 
-# Load BOM seed data (after schema is ready)
-echo "Loading BOM seed data..."
-python init_database.py
+# Load BOM seed data (after schema is ready) - DISABLED to prevent re-seeding on every deploy
+# echo "Loading BOM seed data..."
+# python init_database.py
 
 echo "Build completed successfully!"
